@@ -8,14 +8,16 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var store = SkillLibraryStore()
+    @StateObject private var languageSettings = AppLanguageSettings()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        SkillLibraryView(store: store, languageSettings: languageSettings)
+            .environment(\.locale, languageSettings.locale)
+            .frame(minWidth: 1120, minHeight: 720)
+            .task {
+                try? store.refresh()
+            }
     }
 }
 
