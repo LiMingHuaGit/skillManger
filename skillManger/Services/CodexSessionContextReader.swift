@@ -38,11 +38,15 @@ struct CodexSessionContextReader {
         defer { removeHistorySnapshot(at: historySnapshotURL) }
 
         return sessions.prefix(limit).map { session in
-            CodexSessionContext(
+            let cwd = historySnapshotURL.map {
+                readLatestWorkingDirectory(threadID: session.id, databaseURL: $0)
+            } ?? ""
+
+            return CodexSessionContext(
                 id: session.id,
                 title: session.title,
                 preview: session.title,
-                cwd: "",
+                cwd: cwd,
                 updatedAt: session.updatedAt,
                 recentUserMessages: historySnapshotURL.map {
                     readRecentUserMessages(threadID: session.id, databaseURL: $0, limit: messagesPerSession)
@@ -145,6 +149,39 @@ struct CodexSessionContextReader {
         return messages.reversed()
     }
 
+    private func readLatestWorkingDirectory(threadID: String, databaseURL: URL) -> String {
+        guard fileManager.fileExists(atPath: databaseURL.path) else { return "" }
+
+        var database: OpaquePointer?
+        let databaseURI = databaseURL.absoluteString + "?mode=ro&immutable=1"
+        guard sqlite3_open_v2(databaseURI, &database, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI, nil) == SQLITE_OK,
+              let database else {
+            return ""
+        }
+        defer { sqlite3_close(database) }
+
+        let query = """
+        SELECT item_json
+        FROM thread_items
+        WHERE thread_id = ? AND item_type = 'commandExecution'
+        ORDER BY created_at_ms DESC
+        LIMIT 1
+        """
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, query, -1, &statement, nil) == SQLITE_OK,
+              let statement else {
+            return ""
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_text(statement, 1, threadID, -1, SQLITE_TRANSIENT)
+
+        guard sqlite3_step(statement) == SQLITE_ROW,
+              let rawText = sqlite3_column_text(statement, 0) else { return "" }
+
+        return Self.extractWorkingDirectory(from: String(cString: rawText)) ?? ""
+    }
+
     private static func extractUserText(from itemJSON: String) -> String? {
         guard let data = itemJSON.data(using: .utf8),
               let payload = try? JSONDecoder().decode(ThreadItemPayload.self, from: data) else { return nil }
@@ -155,6 +192,13 @@ struct CodexSessionContextReader {
             .filter { $0.isEmpty == false }
             .joined(separator: "\n")
             .nilIfBlank
+    }
+
+    private static func extractWorkingDirectory(from itemJSON: String) -> String? {
+        guard let data = itemJSON.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(CommandExecutionPayload.self, from: data) else { return nil }
+
+        return payload.cwd?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
     }
 
     private static func parseDate(_ value: String) -> Date? {
@@ -194,6 +238,10 @@ private struct ThreadItemPayload: Decodable {
 
 private struct ThreadContent: Decodable {
     var text: String?
+}
+
+private struct CommandExecutionPayload: Decodable {
+    var cwd: String?
 }
 
 private extension String {

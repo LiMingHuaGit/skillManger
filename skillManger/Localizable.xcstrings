@@ -14,6 +14,39 @@
         }
       }
     },
+    "%d recommended from %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d recommended from %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已从 %2$@ 推荐 %1$d 个"
+          }
+        }
+      }
+    },
+    "%d recommended skills" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d recommended skills"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推荐 %d 个 skill"
+          }
+        }
+      }
+    },
     "%d skills, %d plugin skills" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -198,6 +231,23 @@
         }
       }
     },
+    "Codex chat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex chat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex 会话"
+          }
+        }
+      }
+    },
     "Collapse" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -211,6 +261,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "收起"
+          }
+        }
+      }
+    },
+    "Context terms" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Context terms"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上下文关键词"
           }
         }
       }
@@ -711,6 +778,23 @@
         }
       }
     },
+    "Matched" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Matched"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命中"
+          }
+        }
+      }
+    },
     "Missing file" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -878,6 +962,23 @@
         }
       }
     },
+    "No recommended skills" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No recommended skills"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无推荐 skill"
+          }
+        }
+      }
+    },
     "No skills indexed" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -924,6 +1025,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "路径"
+          }
+        }
+      }
+    },
+    "Pick or refresh a recent Codex chat to match it with your local skills." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick or refresh a recent Codex chat to match it with your local skills."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择或刷新最近的 Codex 会话，用它匹配本地 skill。"
           }
         }
       }
@@ -1159,6 +1277,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最近"
+          }
+        }
+      }
+    },
+    "Recommended" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommended"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推荐"
+          }
+        }
+      }
+    },
+    "Recommended from Codex" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommended from Codex"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自 Codex 的推荐"
+          }
+        }
+      }
+    },
+    "Refresh recommendations" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh recommendations"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新推荐"
           }
         }
       }
@@ -1708,150 +1877,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "试试其他搜索词，或切换筛选条件。"
-          }
-        }
-      }
-    },
-    "%d recommended from %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d recommended from %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已从 %2$@ 推荐 %1$d 个"
-          }
-        }
-      }
-    },
-    "Codex chat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codex chat"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codex 会话"
-          }
-        }
-      }
-    },
-    "Context terms" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Context terms"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "上下文关键词"
-          }
-        }
-      }
-    },
-    "Matched" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Matched"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "命中"
-          }
-        }
-      }
-    },
-    "No recommended skills" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No recommended skills"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂无推荐 skill"
-          }
-        }
-      }
-    },
-    "Pick or refresh a recent Codex chat to match it with your local skills." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pick or refresh a recent Codex chat to match it with your local skills."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择或刷新最近的 Codex 会话，用它匹配本地 skill。"
-          }
-        }
-      }
-    },
-    "Recommended" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recommended"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "推荐"
-          }
-        }
-      }
-    },
-    "Recommended from Codex" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recommended from Codex"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "来自 Codex 的推荐"
-          }
-        }
-      }
-    },
-    "Refresh recommendations" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Refresh recommendations"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "刷新推荐"
           }
         }
       }

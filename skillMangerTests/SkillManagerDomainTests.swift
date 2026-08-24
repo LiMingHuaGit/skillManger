@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SQLite3
 import Testing
 @testable import skillManger
 
@@ -275,6 +276,59 @@ struct SkillManagerDomainTests {
         #expect(contexts.map(\.id) == ["active", "older"])
         #expect(contexts.first?.title == "macOS skill 推荐更新")
     }
+
+    @Test func codexSessionDisplayTitleUsesProjectPrefix() throws {
+        let context = CodexSessionContext(
+            id: "thread-1",
+            title: "后端",
+            preview: "后端",
+            cwd: "/Users/ming/xcmgWorkSpace/国内mes/code/new/mom-backend",
+            updatedAt: Date(timeIntervalSince1970: 1_784_000_000),
+            recentUserMessages: []
+        )
+
+        #expect(context.projectName == "mom-backend")
+        #expect(context.displayTitle == "mom-backend / 后端")
+    }
+
+    @Test func codexSessionReaderLoadsWorkingDirectoryFromCommandHistory() throws {
+        let codexHome = try TemporarySkillRoot()
+        let codexDirectory = codexHome.url.appendingPathComponent(".codex", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexDirectory, withIntermediateDirectories: true)
+        try """
+        {"id":"thread-1","thread_name":"后端","updated_at":"2026-08-24T02:00:00.000000Z"}
+        """.write(to: codexDirectory.appendingPathComponent("session_index.jsonl"), atomically: true, encoding: .utf8)
+
+        let databaseURL = codexDirectory.appendingPathComponent("thread_history_1.sqlite")
+        var database: OpaquePointer?
+        guard sqlite3_open(databaseURL.path, &database) == SQLITE_OK, let database else {
+            throw NSError(domain: "SkillManagerTests", code: 1)
+        }
+        defer { sqlite3_close(database) }
+
+        try executeSQL("""
+        CREATE TABLE thread_items (
+            thread_id TEXT NOT NULL,
+            turn_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            rollout_ordinal INTEGER NOT NULL,
+            created_at_ms INTEGER NOT NULL,
+            item_json TEXT NOT NULL,
+            item_type TEXT NOT NULL DEFAULT '',
+            updated_at_ordinal INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (thread_id, turn_id, item_id)
+        );
+        """, database: database)
+        try executeSQL("""
+        INSERT INTO thread_items (thread_id, turn_id, item_id, rollout_ordinal, created_at_ms, item_json, item_type)
+        VALUES ('thread-1', 'turn-1', 'cmd-1', 1, 1000, '{"type":"commandExecution","cwd":"/Users/ming/work/mom-backend"}', 'commandExecution');
+        """, database: database)
+
+        let contexts = try CodexSessionContextReader(codexHomeURL: codexDirectory).recentContexts(limit: 1)
+
+        #expect(contexts.first?.cwd == "/Users/ming/work/mom-backend")
+        #expect(contexts.first?.displayTitle == "mom-backend / 后端")
+    }
 }
 
 private extension Skill {
@@ -323,5 +377,15 @@ private final class TemporarySkillRoot {
         let configURL = configDirectory.appendingPathComponent("config.toml")
         try contents.write(to: configURL, atomically: true, encoding: .utf8)
         return configURL
+    }
+}
+
+private func executeSQL(_ sql: String, database: OpaquePointer) throws {
+    var errorMessage: UnsafeMutablePointer<CChar>?
+    defer { sqlite3_free(errorMessage) }
+
+    guard sqlite3_exec(database, sql, nil, nil, &errorMessage) == SQLITE_OK else {
+        let message = errorMessage.map { String(cString: $0) } ?? "Unknown SQLite error"
+        throw NSError(domain: "SkillManagerTests", code: 2, userInfo: [NSLocalizedDescriptionKey: message])
     }
 }

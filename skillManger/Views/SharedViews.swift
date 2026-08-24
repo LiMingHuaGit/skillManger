@@ -135,3 +135,25 @@ struct RecommendedSkillRowView: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+struct CodexSessionTitleView: View {
+    let session: CodexSessionContext
+    var font: Font = .caption.weight(.semibold)
+    var iconSize: CGFloat = 11
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                .font(.system(size: iconSize, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.blue)
+
+            Text(session.displayTitle)
+                .font(font)
+                .foregroundStyle(.blue)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .accessibilityLabel("Codex \(session.displayTitle)")
+    }
+}

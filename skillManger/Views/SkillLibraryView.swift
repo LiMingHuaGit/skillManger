@@ -250,10 +250,13 @@ struct SkillLibraryView: View {
             }
 
             if let session = store.selectedCodexSession {
-                Text(session.displayTitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    CodexSessionTitleView(session: session)
+                    Text(L10n.format("%d recommended skills", locale: languageSettings.locale, store.skillRecommendations.count))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .lineLimit(1)
             } else if let recommendationError = store.recommendationError {
                 Text(recommendationError)
                     .font(.caption)

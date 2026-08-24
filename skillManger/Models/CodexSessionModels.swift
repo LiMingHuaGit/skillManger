@@ -16,7 +16,15 @@ struct CodexSessionContext: Identifiable, Hashable {
     var recentUserMessages: [String]
 
     var displayTitle: String {
-        title.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank ?? "Untitled Codex chat"
+        let sessionTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank ?? "Untitled Codex chat"
+        guard let projectName else { return sessionTitle }
+        return "\(projectName) / \(sessionTitle)"
+    }
+
+    var projectName: String? {
+        let trimmedCWD = cwd.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedCWD.isEmpty == false else { return nil }
+        return URL(fileURLWithPath: trimmedCWD).lastPathComponent.nilIfBlank
     }
 
     var contextText: String {

@@ -171,10 +171,7 @@ struct SkillNotchView: View {
                 Text(L10n.string("Skill Quick Access", locale: locale))
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
-                Text(summaryText)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.52))
-                    .lineLimit(1)
+                summaryView
             }
 
             Spacer()
@@ -229,17 +226,33 @@ struct SkillNotchView: View {
         }
     }
 
-    private var summaryText: String {
+    @ViewBuilder
+    private var summaryView: some View {
         if scope == .recommended, let session = store.selectedCodexSession {
-            return L10n.format("%d recommended from %@", locale: locale, store.skillRecommendations.count, session.displayTitle)
+            HStack(spacing: 6) {
+                CodexSessionTitleView(session: session, font: .caption.weight(.semibold), iconSize: 10)
+                Text("·")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.35))
+                Text(L10n.format("%d recommended skills", locale: locale, store.skillRecommendations.count))
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.52))
+            }
+            .lineLimit(1)
+            .frame(maxWidth: 440, alignment: .leading)
+        } else {
+            Text(
+                L10n.format(
+                    "%d skills, %d plugin skills",
+                    locale: locale,
+                    store.standaloneSkills.count,
+                    store.pluginSkills.count
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.52))
+            .lineLimit(1)
         }
-
-        return L10n.format(
-            "%d skills, %d plugin skills",
-            locale: locale,
-            store.standaloneSkills.count,
-            store.pluginSkills.count
-        )
     }
 
     private var scopedSkills: [Skill] {
