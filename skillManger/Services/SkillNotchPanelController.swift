@@ -15,6 +15,8 @@ final class SkillNotchState: ObservableObject {
     enum Layout {
         static let fallbackClosedSize = CGSize(width: 286, height: 38)
         static let openSize = CGSize(width: 720, height: 382)
+        static let shadowPadding: CGFloat = 24
+        static let windowSize = CGSize(width: openSize.width, height: openSize.height + shadowPadding)
     }
 
     @Published var isExpanded = false
@@ -102,11 +104,12 @@ final class SkillNotchPanelController {
 
         if notchWindow == nil {
             let window = SkillNotchPanel(
-                contentRect: frame(for: notchState.currentSize, on: screen),
+                contentRect: frame(for: SkillNotchState.Layout.windowSize, on: screen),
                 styleMask: [.borderless, .utilityWindow, .hudWindow],
                 backing: .buffered,
                 defer: false
             )
+            window.ignoresMouseEvents = true
             window.onMouseExited = { [weak self] in
                 self?.scheduleCollapseIfNeeded()
             }
@@ -176,19 +179,19 @@ final class SkillNotchPanelController {
         let screen = activeScreen ?? targetScreen()
         activeScreen = screen
         notchState.updateClosedSize(closedSize(for: screen))
-        let newFrame = frame(for: notchState.currentSize, on: screen).integral
+        let newFrame = frame(for: SkillNotchState.Layout.windowSize, on: screen).integral
+        window.ignoresMouseEvents = notchState.isExpanded == false
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.24
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 window.animator().setFrame(newFrame, display: true)
-                window.contentView?.animator().setFrameSize(newFrame.size)
             }
         } else {
             window.setFrame(newFrame, display: true)
-            window.contentView?.setFrameSize(newFrame.size)
         }
+        window.contentView?.setFrameSize(newFrame.size)
     }
 
     private func installMouseMonitors() {
@@ -210,9 +213,17 @@ final class SkillNotchPanelController {
     }
 
     private func handleMouseMoved() {
+        if notchState.isExpanded == false {
+            if isMouseInsideVisibleNotch(padding: 4) {
+                notchWindow?.ignoresMouseEvents = false
+                notchState.expand()
+            }
+            return
+        }
+
         guard notchState.isExpanded else { return }
 
-        if isMouseInsideNotchWindow(padding: 8) {
+        if isMouseInsideVisibleNotch(padding: 8) {
             collapseTask?.cancel()
         } else {
             scheduleCollapseIfNeeded()
@@ -227,14 +238,22 @@ final class SkillNotchPanelController {
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled, let self else { return }
             guard self.notchState.isInteractionPinned == false else { return }
-            guard self.isMouseInsideNotchWindow(padding: 8) == false else { return }
+            guard self.isMouseInsideVisibleNotch(padding: 8) == false else { return }
             self.notchState.collapse()
         }
     }
 
-    private func isMouseInsideNotchWindow(padding: CGFloat) -> Bool {
+    private func isMouseInsideVisibleNotch(padding: CGFloat) -> Bool {
         guard let notchWindow, notchWindow.isVisible else { return false }
-        return notchWindow.frame.insetBy(dx: -padding, dy: -padding).contains(NSEvent.mouseLocation)
+        let visibleSize = notchState.currentSize
+        let frame = notchWindow.frame
+        let visibleFrame = NSRect(
+            x: frame.midX - visibleSize.width / 2,
+            y: frame.maxY - visibleSize.height,
+            width: visibleSize.width,
+            height: visibleSize.height
+        )
+        return visibleFrame.insetBy(dx: -padding, dy: -padding).contains(NSEvent.mouseLocation)
     }
 
     private func targetScreen() -> NSScreen? {

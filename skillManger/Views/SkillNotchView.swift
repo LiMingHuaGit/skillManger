@@ -42,6 +42,26 @@ struct SkillNotchView: View {
     private let openAnimation = Animation.spring(response: 0.34, dampingFraction: 0.82, blendDuration: 0)
 
     var body: some View {
+        ZStack(alignment: .top) {
+            notchSurface
+        }
+        .frame(
+            width: SkillNotchState.Layout.windowSize.width,
+            height: SkillNotchState.Layout.windowSize.height,
+            alignment: .top
+        )
+        .preferredColorScheme(.dark)
+        .environment(\.locale, languageSettings.locale)
+        .animation(openAnimation, value: notchState.isExpanded)
+        .onChange(of: searchText) { _, _ in
+            updateInteractionPin()
+        }
+        .onDisappear {
+            notchState.setInteractionPinned(false)
+        }
+    }
+
+    private var notchSurface: some View {
         VStack(spacing: 0) {
             if notchState.isExpanded {
                 expandedContent
@@ -51,6 +71,7 @@ struct SkillNotchView: View {
         }
         .frame(width: notchState.currentSize.width, height: notchState.currentSize.height, alignment: .top)
         .background(.black, in: SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18))
+        .contentShape(Rectangle())
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(.black)
@@ -62,16 +83,7 @@ struct SkillNotchView: View {
                 .stroke(.white.opacity(notchState.isExpanded ? 0.10 : 0.06), lineWidth: 1)
         }
         .shadow(color: .black.opacity(notchState.isExpanded ? 0.50 : 0.20), radius: notchState.isExpanded ? 20 : 8, y: notchState.isExpanded ? 10 : 3)
-        .preferredColorScheme(.dark)
-        .environment(\.locale, languageSettings.locale)
-        .animation(openAnimation, value: notchState.isExpanded)
         .onHover(perform: handleHover)
-        .onChange(of: searchText) { _, _ in
-            updateInteractionPin()
-        }
-        .onDisappear {
-            notchState.setInteractionPinned(false)
-        }
         .onTapGesture {
             if notchState.isExpanded == false {
                 notchState.expand()
