@@ -78,6 +78,20 @@ struct Skill: Identifiable, Codable, Hashable {
     }
 }
 
+struct PluginPackage: Identifiable, Hashable {
+    var id: String
+    var name: String
+    var marketplaceID: String
+    var version: String?
+    var rootPath: String
+    var skillCount: Int
+    var skillIDs: [Skill.ID]
+
+    var displayName: String {
+        "\(name)@\(marketplaceID)"
+    }
+}
+
 enum SkillLibraryFilter: String, CaseIterable, Identifiable {
     case all
     case favorites

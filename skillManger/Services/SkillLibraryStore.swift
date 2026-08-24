@@ -103,12 +103,15 @@ final class SkillLibraryStore: ObservableObject {
         preferences: SkillPreferencesStoring = UserDefaultsSkillPreferences(),
         indexer: SkillIndexer = SkillIndexer(),
         initialSkills: [Skill] = [],
-        roots: [SkillRoot]? = nil
+        roots: [SkillRoot]? = nil,
+        codexConfigURL: URL? = nil,
+        homeDirectory: String = NSHomeDirectory()
     ) {
         self.preferences = preferences
         self.indexer = indexer
+        let resolvedConfigURL = codexConfigURL ?? URL(fileURLWithPath: homeDirectory).appendingPathComponent(".codex/config.toml")
         self.skills = initialSkills
-        self.roots = roots ?? (preferences.roots.isEmpty ? Self.defaultRoots() : preferences.roots)
+        self.roots = roots ?? Self.preferredRoots(from: preferences.roots, homeDirectory: homeDirectory, codexConfigURL: resolvedConfigURL)
         self.preferences.roots = self.roots
         selectedSkillID = initialSkills.first?.id
     }
@@ -207,6 +210,53 @@ final class SkillLibraryStore: ObservableObject {
         return sort(candidates)
     }
 
+    var standaloneSkills: [Skill] {
+        sort(skills.filter { $0.sourceType != .plugin })
+    }
+
+    var pluginSkills: [Skill] {
+        sort(skills.filter { $0.sourceType == .plugin })
+    }
+
+    var pluginPackages: [PluginPackage] {
+        let grouped = Dictionary(grouping: pluginSkills.compactMap { skill -> (PluginPackageIdentity, Skill)? in
+            guard let identity = PluginPackageIdentity(skill: skill) else { return nil }
+            return (identity, skill)
+        }, by: { $0.0 })
+
+        return grouped.map { identity, entries in
+            let packageSkills = sort(entries.map(\.1))
+            return PluginPackage(
+                id: identity.id,
+                name: identity.name,
+                marketplaceID: identity.marketplaceID,
+                version: identity.version,
+                rootPath: identity.rootPath,
+                skillCount: packageSkills.count,
+                skillIDs: packageSkills.map(\.id)
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    func skills(forPluginID pluginID: PluginPackage.ID) -> [Skill] {
+        guard let package = pluginPackages.first(where: { $0.id == pluginID }) else { return [] }
+        let ids = Set(package.skillIDs)
+        return sort(pluginSkills.filter { ids.contains($0.id) })
+    }
+
+    func duplicateSkills(for skill: Skill) -> [Skill] {
+        skills
+            .filter { candidate in
+                candidate.name.caseInsensitiveCompare(skill.name) == .orderedSame && candidate.sourcePath != skill.sourcePath
+            }
+            .sorted { lhs, rhs in
+                lhs.sourcePath.localizedCaseInsensitiveCompare(rhs.sourcePath) == .orderedAscending
+            }
+    }
+
     func refresh() throws {
         let enabledRoots = roots.filter(\.enabled).map { URL(fileURLWithPath: NSString(string: $0.path).expandingTildeInPath) }
         skills = try indexer.index(rootURLs: enabledRoots)
@@ -278,17 +328,71 @@ final class SkillLibraryStore: ObservableObject {
         }
     }
 
-    static func defaultRoots(homeDirectory: String = NSHomeDirectory()) -> [SkillRoot] {
-        [
+    static func defaultRoots(homeDirectory: String = NSHomeDirectory(), codexConfigURL: URL? = nil) -> [SkillRoot] {
+        let resolvedConfigURL = codexConfigURL ?? URL(fileURLWithPath: homeDirectory).appendingPathComponent(".codex/config.toml")
+        let pluginRoots = CodexConfigPluginResolver()
+            .activePluginRootURLs(configURL: resolvedConfigURL, homeDirectory: homeDirectory)
+            .map { SkillRoot(path: $0.path, enabled: true, sourceType: .plugin, lastIndexedAt: nil, lastError: nil) }
+        let fallbackPluginRoots = pluginRoots.isEmpty ? [SkillRoot(path: "\(homeDirectory)/.codex/plugins/cache", enabled: true, sourceType: .plugin, lastIndexedAt: nil, lastError: nil)] : pluginRoots
+
+        return [
             SkillRoot(path: "\(homeDirectory)/.codex/skills", enabled: true, sourceType: .local, lastIndexedAt: nil, lastError: nil),
-            SkillRoot(path: "\(homeDirectory)/.codex/skills/.system", enabled: true, sourceType: .system, lastIndexedAt: nil, lastError: nil),
-            SkillRoot(path: "\(homeDirectory)/.codex/plugins/cache", enabled: true, sourceType: .plugin, lastIndexedAt: nil, lastError: nil)
-        ]
+            SkillRoot(path: "\(homeDirectory)/.codex/skills/.system", enabled: true, sourceType: .system, lastIndexedAt: nil, lastError: nil)
+        ] + fallbackPluginRoots
+    }
+
+    private static func preferredRoots(from persistedRoots: [SkillRoot], homeDirectory: String = NSHomeDirectory(), codexConfigURL: URL? = nil) -> [SkillRoot] {
+        guard persistedRoots.isEmpty == false else { return defaultRoots(homeDirectory: homeDirectory, codexConfigURL: codexConfigURL) }
+
+        let codexPluginPath = "\(homeDirectory)/.codex/plugins"
+        let legacyPluginCachePath = "\(homeDirectory)/.codex/plugins/cache"
+        var roots = persistedRoots.filter { $0.path != legacyPluginCachePath }
+        roots.removeAll { $0.path == codexPluginPath }
+
+        let pluginRoots = defaultRoots(homeDirectory: homeDirectory, codexConfigURL: codexConfigURL)
+            .filter { $0.sourceType == .plugin }
+        for pluginRoot in pluginRoots where roots.contains(where: { $0.path == pluginRoot.path }) == false {
+            roots.append(pluginRoot)
+        }
+
+        return roots
     }
 }
 
 private extension String {
     var nilIfBlank: String? {
         isEmpty ? nil : self
+    }
+}
+
+private struct PluginPackageIdentity: Hashable {
+    var name: String
+    var marketplaceID: String
+    var version: String?
+    var rootPath: String
+
+    var id: String { "\(name)@\(marketplaceID)" }
+
+    init?(skill: Skill) {
+        guard skill.sourceType == .plugin else { return nil }
+        let components = URL(fileURLWithPath: skill.sourcePath).pathComponents
+
+        if let cacheIndex = components.firstIndex(of: "cache"), components.indices.contains(cacheIndex + 3) {
+            marketplaceID = components[cacheIndex + 1]
+            name = components[cacheIndex + 2]
+            version = components[cacheIndex + 3]
+            rootPath = components[0...cacheIndex + 3].joined(separator: "/").replacingOccurrences(of: "//", with: "/")
+            return
+        }
+
+        if let pluginsIndex = components.firstIndex(of: "plugins"), components.indices.contains(pluginsIndex + 3), components[pluginsIndex + 2] == "plugins" {
+            marketplaceID = components[pluginsIndex + 1]
+            name = components[pluginsIndex + 3]
+            version = nil
+            rootPath = components[0...pluginsIndex + 3].joined(separator: "/").replacingOccurrences(of: "//", with: "/")
+            return
+        }
+
+        return nil
     }
 }

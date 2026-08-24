@@ -24,6 +24,7 @@ struct SkillDetailView: View {
                         header(for: skill)
                         copyPanel(for: skill)
                         metadataPanel(for: skill)
+                        duplicatePanel(for: skill)
                         excerptPanel(for: skill)
                     }
                     .padding(24)
@@ -137,6 +138,76 @@ struct SkillDetailView: View {
         .font(.callout)
     }
 
+    @ViewBuilder
+    private func duplicatePanel(for skill: Skill) -> some View {
+        let duplicates = store.duplicateSkills(for: skill)
+        if duplicates.isEmpty == false {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Duplicate skills")
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        copyDuplicateReport(for: skill, duplicates: duplicates)
+                    } label: {
+                        Label("Copy duplicate report", systemImage: "doc.on.doc")
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Text("These skills share the same name. Reveal or copy paths to decide which one to keep, rename, or remove.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(duplicates, id: \.sourcePath) { duplicate in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                SourceBadge(sourceType: duplicate.sourceType)
+                                Text(duplicate.rootPath)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer()
+                                Button {
+                                    copyToPasteboard(duplicate.sourcePath)
+                                    store.toastMessage = L10n.string("Duplicate path copied", locale: locale)
+                                } label: {
+                                    Label("Copy path", systemImage: "doc.on.doc")
+                                }
+                                .buttonStyle(.borderless)
+
+                                Button {
+                                    revealInFinder(duplicate.sourcePath)
+                                } label: {
+                                    Label("Reveal in Finder", systemImage: "folder")
+                                }
+                                .buttonStyle(.borderless)
+                            }
+
+                            Text(duplicate.sourcePath)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.primary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 10)
+
+                        if duplicate.sourcePath != duplicates.last?.sourcePath {
+                            Divider()
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            }
+            .padding(16)
+            .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+        }
+    }
+
     private func excerptPanel(for skill: Skill) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("SKILL.md preview")
@@ -173,6 +244,20 @@ struct SkillDetailView: View {
     private func copyToPasteboard(_ text: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    private func copyDuplicateReport(for skill: Skill, duplicates: [Skill]) {
+        let report = ([skill] + duplicates)
+            .map { duplicate in
+                "\(duplicate.name)\n\(duplicate.sourcePath)"
+            }
+            .joined(separator: "\n\n")
+        copyToPasteboard(report)
+        store.toastMessage = L10n.string("Duplicate report copied", locale: locale)
+    }
+
+    private func revealInFinder(_ path: String) {
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 }
 

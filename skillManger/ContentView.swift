@@ -8,8 +8,16 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var store = SkillLibraryStore()
-    @StateObject private var languageSettings = AppLanguageSettings()
+    @ObservedObject var store: SkillLibraryStore
+    @ObservedObject var languageSettings: AppLanguageSettings
+
+    init(
+        store: SkillLibraryStore = SkillManagerAppState.shared.store,
+        languageSettings: AppLanguageSettings = SkillManagerAppState.shared.languageSettings
+    ) {
+        self.store = store
+        self.languageSettings = languageSettings
+    }
 
     var body: some View {
         SkillLibraryView(store: store, languageSettings: languageSettings)

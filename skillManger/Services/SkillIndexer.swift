@@ -17,9 +17,12 @@ struct SkillIndexer {
     func index(rootURLs: [URL]) throws -> [Skill] {
         let indexedAt = Date()
         var skills: [Skill] = []
+        var indexedPaths = Set<String>()
 
         for rootURL in rootURLs where fileManager.fileExists(atPath: rootURL.path) {
             for skillFile in skillFiles(in: rootURL) {
+                let canonicalPath = skillFile.resolvingSymlinksInPath().standardizedFileURL.path
+                guard indexedPaths.insert(canonicalPath).inserted else { continue }
                 let skill = parseSkill(fileURL: skillFile, rootURL: rootURL, indexedAt: indexedAt)
                 skills.append(skill)
             }
@@ -50,7 +53,7 @@ struct SkillIndexer {
         guard let enumerator = fileManager.enumerator(
             at: rootURL,
             includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey],
-            options: [.skipsHiddenFiles]
+            options: []
         ) else {
             return files
         }
@@ -165,6 +168,7 @@ struct SkillIndexer {
 
     private func sourceType(for rootURL: URL, fileURL: URL) -> SkillSourceType {
         let path = fileURL.path.lowercased()
+        if path.contains("/.codex/plugins/") { return .plugin }
         if path.contains("/plugins/cache/") { return .plugin }
         if path.contains("/.system/") { return .system }
         if rootURL.path.contains(".codex/skills") { return .local }
@@ -173,10 +177,14 @@ struct SkillIndexer {
 
     private func pluginURI(for fileURL: URL) -> String? {
         let path = fileURL.path
-        guard path.contains("/plugins/cache/") else { return nil }
+        guard path.contains("/.codex/plugins/") || path.contains("/plugins/cache/") else { return nil }
         let components = fileURL.pathComponents
-        guard let cacheIndex = components.firstIndex(of: "cache"), components.indices.contains(cacheIndex + 1) else { return nil }
-        return "plugin://\(components[cacheIndex + 1])"
+        if let cacheIndex = components.firstIndex(of: "cache"), components.indices.contains(cacheIndex + 1) {
+            return "plugin://\(components[cacheIndex + 1])"
+        }
+
+        guard let pluginsIndex = components.firstIndex(of: "plugins"), components.indices.contains(pluginsIndex + 1) else { return nil }
+        return "plugin://\(components[pluginsIndex + 1])"
     }
 
     private func tags(for name: String, description skillDescription: String, rootURL: URL) -> [String] {

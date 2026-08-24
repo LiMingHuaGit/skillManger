@@ -9,6 +9,9 @@ import SwiftUI
 
 enum LibrarySection: String, CaseIterable, Identifiable {
     case library
+    case standaloneSkills
+    case plugins
+    case pluginSkills
     case favorites
     case recents
     case settings
@@ -18,6 +21,9 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     func title(locale: Locale) -> String {
         switch self {
         case .library: L10n.string("Library", locale: locale)
+        case .standaloneSkills: L10n.string("Standalone Skills", locale: locale)
+        case .plugins: L10n.string("Plugins", locale: locale)
+        case .pluginSkills: L10n.string("Plugin Skills", locale: locale)
         case .favorites: L10n.string("Favorites", locale: locale)
         case .recents: L10n.string("Recents", locale: locale)
         case .settings: L10n.string("Settings", locale: locale)
@@ -27,6 +33,9 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .library: "books.vertical"
+        case .standaloneSkills: "text.book.closed"
+        case .plugins: "puzzlepiece.extension"
+        case .pluginSkills: "square.stack.3d.up"
         case .favorites: "star"
         case .recents: "clock.arrow.circlepath"
         case .settings: "gearshape"
@@ -38,6 +47,7 @@ struct SkillLibraryView: View {
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
     @State private var selectedSection: LibrarySection = .library
+    @State private var selectedPluginID: PluginPackage.ID?
 
     var body: some View {
         NavigationSplitView {
@@ -49,19 +59,23 @@ struct SkillLibraryView: View {
                     }
                 }
             }
-            .navigationTitle("Skills")
+            .navigationTitle(L10n.string("Skills", locale: languageSettings.locale))
             .frame(minWidth: 190)
         } content: {
             if selectedSection == .settings {
                 SettingsView(store: store, languageSettings: languageSettings)
+            } else if selectedSection == .plugins {
+                pluginList
             } else {
                 skillList
             }
         } detail: {
             if selectedSection == .settings {
                 EmptyStateView(title: L10n.string("Settings", locale: languageSettings.locale), message: L10n.string("Manage roots, templates, and indexing from the middle panel.", locale: languageSettings.locale), systemImage: "gearshape")
+            } else if selectedSection == .plugins {
+                PluginDetailView(store: store, package: selectedPlugin)
             } else {
-                SkillDetailView(store: store, skill: store.selectedSkill)
+                SkillDetailView(store: store, skill: selectedDisplayedSkill)
             }
         }
         .onChange(of: selectedSection) { _, newValue in
@@ -76,7 +90,7 @@ struct SkillLibraryView: View {
                 .background(.background)
             Divider()
 
-            if store.visibleSkills.isEmpty {
+            if displayedSkills.isEmpty {
                 EmptyStateView(
                     title: emptyTitle,
                     message: emptyMessage,
@@ -84,7 +98,7 @@ struct SkillLibraryView: View {
                 )
             } else {
                 List(selection: $store.selectedSkillID) {
-                    ForEach(store.visibleSkills) { skill in
+                    ForEach(displayedSkills) { skill in
                         SkillRowView(skill: skill, isFavorite: store.favoriteSkillIDs.contains(skill.id))
                             .tag(skill.id)
                     }
@@ -93,16 +107,65 @@ struct SkillLibraryView: View {
             }
         }
         .navigationTitle(selectedSection.title(locale: languageSettings.locale))
+        .onAppear(perform: keepSkillSelectionInsideDisplayedSkills)
+        .onChange(of: displayedSkills) { _, _ in
+            keepSkillSelectionInsideDisplayedSkills()
+        }
+    }
+
+    private var pluginList: some View {
+        VStack(spacing: 0) {
+            HStack {
+                TextField(L10n.string("Search plugin name, marketplace, version, or path", locale: languageSettings.locale), text: $store.searchText)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityLabel(L10n.string("Search plugins", locale: languageSettings.locale))
+
+                Button {
+                    try? store.refresh()
+                } label: {
+                    Label(L10n.string("Re-index", locale: languageSettings.locale), systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(16)
+            .background(.background)
+            Divider()
+
+            if displayedPlugins.isEmpty {
+                EmptyStateView(
+                    title: L10n.string("No plugins indexed", locale: languageSettings.locale),
+                    message: L10n.string("Enabled Codex plugins will appear here after indexing.", locale: languageSettings.locale),
+                    systemImage: "puzzlepiece.extension"
+                )
+            } else {
+                List(selection: $selectedPluginID) {
+                    ForEach(displayedPlugins) { package in
+                        PluginRowView(package: package)
+                            .tag(package.id)
+                    }
+                }
+                .listStyle(.inset)
+                .onAppear {
+                    selectedPluginID = selectedPluginID ?? displayedPlugins.first?.id
+                }
+                .onChange(of: displayedPlugins) { _, plugins in
+                    if selectedPluginID == nil || plugins.contains(where: { $0.id == selectedPluginID }) == false {
+                        selectedPluginID = plugins.first?.id
+                    }
+                }
+            }
+        }
+        .navigationTitle(selectedSection.title(locale: languageSettings.locale))
     }
 
     private var toolbar: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                TextField("Search name, tag, use case, or path", text: $store.searchText)
+                TextField(L10n.string("Search name, tag, use case, or path", locale: languageSettings.locale), text: $store.searchText)
                     .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel("Search skills")
+                    .accessibilityLabel(L10n.string("Search skills", locale: languageSettings.locale))
 
-                Picker("Sort", selection: $store.sortMode) {
+                Picker(L10n.string("Sort", locale: languageSettings.locale), selection: $store.sortMode) {
                     ForEach(SkillSortMode.allCases) { mode in
                         Text(L10n.string(mode.localizationKey, locale: languageSettings.locale)).tag(mode)
                     }
@@ -112,7 +175,7 @@ struct SkillLibraryView: View {
                 Button {
                     try? store.refresh()
                 } label: {
-                    Label("Re-index", systemImage: "arrow.clockwise")
+                    Label(L10n.string("Re-index", locale: languageSettings.locale), systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.bordered)
             }
@@ -147,6 +210,9 @@ struct SkillLibraryView: View {
     private func applySection(_ section: LibrarySection) {
         switch section {
         case .library: store.selectedFilter = .all
+        case .standaloneSkills: store.selectedFilter = .all
+        case .plugins: store.selectedFilter = .all
+        case .pluginSkills: store.selectedFilter = .plugin
         case .favorites: store.selectedFilter = .favorites
         case .recents: store.selectedFilter = .recent
         case .settings: break
@@ -157,7 +223,61 @@ struct SkillLibraryView: View {
         switch filter {
         case .favorites: .favorites
         case .recent: .recents
+        case .plugin: .pluginSkills
         default: .library
         }
+    }
+
+    private var selectedPlugin: PluginPackage? {
+        guard let selectedPluginID else { return displayedPlugins.first }
+        return displayedPlugins.first { $0.id == selectedPluginID } ?? displayedPlugins.first
+    }
+
+    private var selectedDisplayedSkill: Skill? {
+        guard let selectedSkillID = store.selectedSkillID else { return displayedSkills.first }
+        return displayedSkills.first { $0.id == selectedSkillID } ?? displayedSkills.first
+    }
+
+    private var displayedSkills: [Skill] {
+        switch selectedSection {
+        case .standaloneSkills:
+            return filtered(store.standaloneSkills)
+        case .pluginSkills:
+            return filtered(store.pluginSkills)
+        default:
+            return store.visibleSkills
+        }
+    }
+
+    private var displayedPlugins: [PluginPackage] {
+        let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard query.isEmpty == false else { return store.pluginPackages }
+        return store.pluginPackages.filter { package in
+            [package.name, package.marketplaceID, package.version ?? "", package.rootPath, package.displayName]
+                .contains { $0.lowercased().contains(query) }
+        }
+    }
+
+    private func filtered(_ skills: [Skill]) -> [Skill] {
+        let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard query.isEmpty == false else { return skills }
+        return skills.filter { skill in
+            ([skill.name, skill.description, skill.sourcePath] + skill.tags)
+                .contains { $0.lowercased().contains(query) }
+        }
+    }
+
+    private func keepSkillSelectionInsideDisplayedSkills() {
+        guard displayedSkills.isEmpty == false else {
+            store.selectedSkillID = nil
+            return
+        }
+
+        if let selectedSkillID = store.selectedSkillID,
+           displayedSkills.contains(where: { $0.id == selectedSkillID }) {
+            return
+        }
+
+        store.selectedSkillID = displayedSkills.first?.id
     }
 }

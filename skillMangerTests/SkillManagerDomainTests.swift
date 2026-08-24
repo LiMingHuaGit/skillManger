@@ -77,6 +77,20 @@ struct SkillManagerDomainTests {
         #expect(skills.allSatisfy { $0.healthStatus == .duplicateName })
     }
 
+    @Test func skillIndexerDeduplicatesNestedRootsAndScansHiddenPluginAgentSkills() throws {
+        let pluginRoot = try TemporarySkillRoot()
+        try pluginRoot.writeSkill(
+            folder: "openai-plugins-local/.agents/skills/plugin-creator",
+            contents: "---\nname: plugin-creator\ndescription: Create Codex plugins.\n---\n"
+        )
+
+        let skills = try SkillIndexer().index(rootURLs: [pluginRoot.url, pluginRoot.url.appendingPathComponent("openai-plugins-local")])
+
+        #expect(skills.map(\.sourcePath).count == Set(skills.map(\.sourcePath)).count)
+        #expect(skills.count == 1)
+        #expect(skills.first?.name == "plugin-creator")
+    }
+
     @Test func storeFiltersFavoritesRecentsAndSearchResults() throws {
         let preferences = InMemorySkillPreferences()
         let store = SkillLibraryStore(
@@ -110,6 +124,40 @@ struct SkillManagerDomainTests {
         #expect(preferences.usageEvents.count == 1)
     }
 
+    @Test func storeReportsDuplicateSkillsForDetailResolution() throws {
+        let store = SkillLibraryStore(
+            preferences: InMemorySkillPreferences(),
+            initialSkills: [
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/appkit-interop/SKILL.md"),
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit narrowly.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-api-curated/build-macos-apps/appkit-interop/SKILL.md"),
+                .fixture(name: "swiftui-patterns", description: "Build SwiftUI views.", sourceType: .plugin)
+            ]
+        )
+
+        let selected = try #require(store.skills.first { $0.name == "appkit-interop" })
+        let duplicates = store.duplicateSkills(for: selected)
+
+        #expect(duplicates.map(\.sourcePath) == ["/Users/ming/.codex/plugins/cache/openai-api-curated/build-macos-apps/appkit-interop/SKILL.md"])
+    }
+
+    @Test func storeSeparatesStandaloneSkillsPluginsAndPluginSkills() throws {
+        let store = SkillLibraryStore(
+            preferences: InMemorySkillPreferences(),
+            initialSkills: [
+                .fixture(name: "local-dependency-manager", description: "Use local tools.", sourceType: .local, sourcePath: "/Users/ming/.codex/skills/local-dependency-manager/SKILL.md"),
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b/skills/appkit-interop/SKILL.md"),
+                .fixture(name: "swiftui-patterns", description: "Build SwiftUI views.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b/skills/swiftui-patterns/SKILL.md"),
+                .fixture(name: "audit", description: "Audit product flows.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/role-specific-plugins/product-design/0.1.50/skills/audit/SKILL.md")
+            ]
+        )
+
+        #expect(store.standaloneSkills.map(\.name) == ["local-dependency-manager"])
+        #expect(store.pluginSkills.map(\.name) == ["appkit-interop", "audit", "swiftui-patterns"])
+        #expect(store.pluginPackages.map(\.id) == ["build-macos-apps@openai-curated", "product-design@role-specific-plugins"])
+        #expect(store.pluginPackages.first { $0.id == "build-macos-apps@openai-curated" }?.skillCount == 2)
+        #expect(store.skills(forPluginID: "build-macos-apps@openai-curated").map(\.name) == ["appkit-interop", "swiftui-patterns"])
+    }
+
     @Test func storePersistsRootsAndEditableTemplates() throws {
         let preferences = InMemorySkillPreferences()
         let customRoot = SkillRoot(
@@ -133,6 +181,62 @@ struct SkillManagerDomainTests {
         #expect(preferences.templates.first { $0.id == PlatformTemplate.plainText.id }?.platformName == "Plain Text Edited")
         #expect(preferences.templates.first { $0.id == PlatformTemplate.plainText.id }?.body == "Skill $skill_name lives at $skill_path")
         #expect(preferences.templates.contains { $0.platformName == "Raycast" && $0.isBuiltIn == false })
+    }
+
+    @Test func storeUsesEnabledPluginsFromCodexConfigForDefaultRoots() throws {
+        let codexHome = try TemporarySkillRoot()
+        let enabledRoot = codexHome.url.appendingPathComponent(".codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b/skills/appkit-interop", isDirectory: true)
+        let disabledRoot = codexHome.url.appendingPathComponent(".codex/plugins/cache/openai-curated/build-web-apps/11c74d6b/skills/frontend", isDirectory: true)
+        try FileManager.default.createDirectory(at: enabledRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: disabledRoot, withIntermediateDirectories: true)
+        try "---\nname: appkit-interop\ndescription: Bridge AppKit.\n---\n".write(to: enabledRoot.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        try "---\nname: frontend\ndescription: Build frontend apps.\n---\n".write(to: disabledRoot.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        let configURL = try codexHome.writeCodexConfig("""
+        [marketplaces.openai-curated]
+        source_type = "local"
+        source = "\(codexHome.url.path)/.codex/plugins/openai-curated"
+
+        [plugins."build-macos-apps@openai-curated"]
+        enabled = true
+
+        [plugins."build-web-apps@openai-curated"]
+        enabled = false
+        """)
+
+        let roots = SkillLibraryStore.defaultRoots(homeDirectory: codexHome.url.path, codexConfigURL: configURL)
+        let rootPaths = roots.map(\.path)
+
+        #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b"))
+        #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins/cache/openai-curated/build-web-apps/11c74d6b") == false)
+        #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins") == false)
+    }
+
+    @Test func storeMigratesBroadPluginRootsToEnabledPluginRoots() throws {
+        let codexHome = try TemporarySkillRoot()
+        let enabledRoot = codexHome.url.appendingPathComponent(".codex/plugins/cache/openai-plugins-local/canva/1.0.2/skills/canva-translate-design", isDirectory: true)
+        try FileManager.default.createDirectory(at: enabledRoot, withIntermediateDirectories: true)
+        try "---\nname: canva-translate-design\ndescription: Translate Canva designs.\n---\n".write(to: enabledRoot.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        let configURL = try codexHome.writeCodexConfig("""
+        [marketplaces.openai-plugins-local]
+        source_type = "local"
+        source = "\(codexHome.url.path)/.codex/plugins/openai-plugins-local"
+
+        [plugins."canva@openai-plugins-local"]
+        enabled = true
+        """)
+
+        let preferences = InMemorySkillPreferences()
+        preferences.roots = [
+            SkillRoot(path: "\(codexHome.url.path)/.codex/skills", enabled: true, sourceType: .local, lastIndexedAt: nil, lastError: nil),
+            SkillRoot(path: "\(codexHome.url.path)/.codex/plugins", enabled: true, sourceType: .plugin, lastIndexedAt: nil, lastError: nil)
+        ]
+
+        let store = SkillLibraryStore(preferences: preferences, codexConfigURL: configURL, homeDirectory: codexHome.url.path)
+        let rootPaths = store.roots.map(\.path)
+
+        #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins/cache/openai-plugins-local/canva/1.0.2"))
+        #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins") == false)
+        #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins/cache") == false)
     }
 }
 
@@ -174,5 +278,13 @@ private final class TemporarySkillRoot {
         let skillDirectory = url.appendingPathComponent(folder, isDirectory: true)
         try FileManager.default.createDirectory(at: skillDirectory, withIntermediateDirectories: true)
         try contents.write(to: skillDirectory.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+    }
+
+    func writeCodexConfig(_ contents: String) throws -> URL {
+        let configDirectory = url.appendingPathComponent(".codex", isDirectory: true)
+        try FileManager.default.createDirectory(at: configDirectory, withIntermediateDirectories: true)
+        let configURL = configDirectory.appendingPathComponent("config.toml")
+        try contents.write(to: configURL, atomically: true, encoding: .utf8)
+        return configURL
     }
 }
