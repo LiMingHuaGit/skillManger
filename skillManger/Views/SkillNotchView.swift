@@ -71,6 +71,7 @@ struct SkillNotchView: View {
         }
         .frame(width: notchState.currentSize.width, height: notchState.currentSize.height, alignment: .top)
         .background(.black, in: SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18))
+        .clipShape(SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18))
         .contentShape(Rectangle())
         .overlay(alignment: .top) {
             Rectangle()
@@ -129,20 +130,29 @@ struct SkillNotchView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                VStack(spacing: 8) {
-                    ForEach(filteredSkills.prefix(5)) { skill in
-                        NotchSkillRow(
-                            skill: skill,
-                            isFavorite: store.favoriteSkillIDs.contains(skill.id),
-                            copyAction: { copy(skill) }
-                        )
-                    }
-                }
+                skillResults
             }
         }
         .padding(.top, 16)
         .padding(.horizontal, 18)
         .padding(.bottom, 16)
+    }
+
+    private var skillResults: some View {
+        ScrollView(.vertical) {
+            LazyVStack(spacing: 8) {
+                ForEach(filteredSkills) { skill in
+                    NotchSkillRow(
+                        skill: skill,
+                        isFavorite: store.favoriteSkillIDs.contains(skill.id),
+                        copyAction: { copy(skill) }
+                    )
+                }
+            }
+            .padding(.bottom, 2)
+        }
+        .scrollIndicators(.visible)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var header: some View {
