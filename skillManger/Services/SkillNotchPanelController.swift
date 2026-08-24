@@ -105,7 +105,7 @@ final class SkillNotchPanelController {
         if notchWindow == nil {
             let window = SkillNotchPanel(
                 contentRect: frame(for: SkillNotchState.Layout.windowSize, on: screen),
-                styleMask: [.borderless, .utilityWindow, .hudWindow],
+                styleMask: [.borderless, .utilityWindow],
                 backing: .buffered,
                 defer: false
             )
@@ -113,7 +113,7 @@ final class SkillNotchPanelController {
             window.onMouseExited = { [weak self] in
                 self?.scheduleCollapseIfNeeded()
             }
-            window.contentView = NSHostingView(
+            window.contentView = ClearHostingView(
                 rootView: SkillNotchView(
                     store: appState.store,
                     languageSettings: appState.languageSettings,
@@ -338,5 +338,19 @@ final class SkillNotchPanel: NSPanel {
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
         onMouseExited?()
+    }
+}
+
+final class ClearHostingView<Content: View>: NSHostingView<Content> {
+    required init(rootView: Content) {
+        super.init(rootView: rootView)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    @MainActor @preconcurrency required dynamic init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
 }

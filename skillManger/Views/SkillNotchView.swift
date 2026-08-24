@@ -64,7 +64,9 @@ struct SkillNotchView: View {
     }
 
     private var notchSurface: some View {
-        VStack(spacing: 0) {
+        let shape = SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18)
+
+        return VStack(spacing: 0) {
             if notchState.isExpanded {
                 expandedContent
             } else {
@@ -72,9 +74,17 @@ struct SkillNotchView: View {
             }
         }
         .frame(width: notchState.currentSize.width, height: notchState.currentSize.height, alignment: .top)
-        .background(.black, in: SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18))
-        .clipShape(SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18))
-        .contentShape(Rectangle())
+        .clipShape(shape)
+        .background {
+            shape
+                .fill(.black)
+                .shadow(
+                    color: .black.opacity(notchState.isExpanded ? 0.42 : 0.18),
+                    radius: notchState.isExpanded ? 18 : 7,
+                    y: notchState.isExpanded ? 9 : 3
+                )
+        }
+        .contentShape(shape)
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(.black)
@@ -82,10 +92,8 @@ struct SkillNotchView: View {
                 .padding(.horizontal, 7)
         }
         .overlay {
-            SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18)
-                .stroke(.white.opacity(notchState.isExpanded ? 0.10 : 0.06), lineWidth: 1)
+            shape.stroke(.white.opacity(notchState.isExpanded ? 0.10 : 0.06), lineWidth: 1)
         }
-        .shadow(color: .black.opacity(notchState.isExpanded ? 0.50 : 0.20), radius: notchState.isExpanded ? 20 : 8, y: notchState.isExpanded ? 10 : 3)
         .onHover(perform: handleHover)
         .onTapGesture {
             if notchState.isExpanded == false {
