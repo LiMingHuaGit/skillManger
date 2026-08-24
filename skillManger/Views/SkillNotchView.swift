@@ -9,6 +9,7 @@ import AppKit
 import SwiftUI
 
 private enum NotchSkillScope: String, CaseIterable, Identifiable {
+    case recommended
     case all
     case standalone
     case plugin
@@ -17,6 +18,7 @@ private enum NotchSkillScope: String, CaseIterable, Identifiable {
 
     func title(locale: Locale) -> String {
         switch self {
+        case .recommended: L10n.string("Recommended", locale: locale)
         case .all: L10n.string("All", locale: locale)
         case .standalone: L10n.string("Standalone Skills", locale: locale)
         case .plugin: L10n.string("Plugin Skills", locale: locale)
@@ -33,7 +35,7 @@ struct SkillNotchView: View {
     let openLibrary: () -> Void
     let refresh: () -> Void
 
-    @State private var scope: NotchSkillScope = .all
+    @State private var scope: NotchSkillScope = .recommended
     @State private var searchText = ""
     @State private var collapseTask: Task<Void, Never>?
     @State private var toast: String?
@@ -124,7 +126,7 @@ struct SkillNotchView: View {
                     Image(systemName: "magnifyingglass")
                         .font(.title2)
                         .foregroundStyle(.white.opacity(0.35))
-                    Text(L10n.string("No matching skills", locale: locale))
+                    Text(scope == .recommended ? L10n.string("No recommended skills", locale: locale) : L10n.string("No matching skills", locale: locale))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(.white.opacity(0.72))
                 }
@@ -215,12 +217,16 @@ struct SkillNotchView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 300)
+            .frame(width: 360)
         }
     }
 
     private var summaryText: String {
-        L10n.format(
+        if scope == .recommended, let session = store.selectedCodexSession {
+            return L10n.format("%d recommended from %@", locale: locale, store.skillRecommendations.count, session.displayTitle)
+        }
+
+        return L10n.format(
             "%d skills, %d plugin skills",
             locale: locale,
             store.standaloneSkills.count,
@@ -230,6 +236,7 @@ struct SkillNotchView: View {
 
     private var scopedSkills: [Skill] {
         switch scope {
+        case .recommended: store.recommendedSkills
         case .all: store.visibleSkills
         case .standalone: store.standaloneSkills
         case .plugin: store.pluginSkills

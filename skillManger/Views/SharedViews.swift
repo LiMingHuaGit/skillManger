@@ -91,3 +91,47 @@ struct SkillRowView: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+struct RecommendedSkillRowView: View {
+    @Environment(\.locale) private var locale
+    let recommendation: SkillRecommendation
+    let isFavorite: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(recommendation.skill.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                if isFavorite {
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(.yellow)
+                        .accessibilityLabel(String(localized: "Favorite"))
+                }
+                Spacer(minLength: 8)
+                Label("\(Int(recommendation.score.rounded()))", systemImage: "sparkles")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.blue)
+                SourceBadge(sourceType: recommendation.skill.sourceType)
+            }
+
+            Text(recommendation.skill.description)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+
+            HStack(spacing: 6) {
+                Text(L10n.string("Matched", locale: locale))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Text(recommendation.reason.isEmpty ? L10n.string("Context terms", locale: locale) : recommendation.reason)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+    }
+}

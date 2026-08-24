@@ -9,6 +9,7 @@ import SwiftUI
 
 enum LibrarySection: String, CaseIterable, Identifiable {
     case library
+    case recommendations
     case standaloneSkills
     case plugins
     case pluginSkills
@@ -21,6 +22,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     func title(locale: Locale) -> String {
         switch self {
         case .library: L10n.string("Library", locale: locale)
+        case .recommendations: L10n.string("Recommended", locale: locale)
         case .standaloneSkills: L10n.string("Standalone Skills", locale: locale)
         case .plugins: L10n.string("Plugins", locale: locale)
         case .pluginSkills: L10n.string("Plugin Skills", locale: locale)
@@ -33,6 +35,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .library: "books.vertical"
+        case .recommendations: "sparkles"
         case .standaloneSkills: "text.book.closed"
         case .plugins: "puzzlepiece.extension"
         case .pluginSkills: "square.stack.3d.up"
@@ -99,8 +102,13 @@ struct SkillLibraryView: View {
             } else {
                 List(selection: $store.selectedSkillID) {
                     ForEach(displayedSkills) { skill in
-                        SkillRowView(skill: skill, isFavorite: store.favoriteSkillIDs.contains(skill.id))
-                            .tag(skill.id)
+                        if selectedSection == .recommendations, let recommendation = store.recommendation(for: skill.id) {
+                            RecommendedSkillRowView(recommendation: recommendation, isFavorite: store.favoriteSkillIDs.contains(skill.id))
+                                .tag(skill.id)
+                        } else {
+                            SkillRowView(skill: skill, isFavorite: store.favoriteSkillIDs.contains(skill.id))
+                                .tag(skill.id)
+                        }
                     }
                 }
                 .listStyle(.inset)
@@ -180,6 +188,10 @@ struct SkillLibraryView: View {
                 .buttonStyle(.bordered)
             }
 
+            if selectedSection == .recommendations {
+                recommendationToolbar
+            }
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(SkillLibraryFilter.allCases) { filter in
@@ -198,18 +210,65 @@ struct SkillLibraryView: View {
     }
 
     private var emptyTitle: String {
-        store.skills.isEmpty ? L10n.string("No skills indexed", locale: languageSettings.locale) : L10n.string("No matching skills", locale: languageSettings.locale)
+        if selectedSection == .recommendations {
+            return L10n.string("No recommended skills", locale: languageSettings.locale)
+        }
+        return store.skills.isEmpty ? L10n.string("No skills indexed", locale: languageSettings.locale) : L10n.string("No matching skills", locale: languageSettings.locale)
     }
 
     private var emptyMessage: String {
-        store.skills.isEmpty
+        if selectedSection == .recommendations {
+            return store.recommendationError ?? L10n.string("Pick or refresh a recent Codex chat to match it with your local skills.", locale: languageSettings.locale)
+        }
+        return store.skills.isEmpty
         ? L10n.string("Add a skill root in Settings or check that local skill folders are readable.", locale: languageSettings.locale)
         : L10n.string("Try another search term or switch filters.", locale: languageSettings.locale)
+    }
+
+    private var recommendationToolbar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Label(L10n.string("Recommended from Codex", locale: languageSettings.locale), systemImage: "sparkles")
+                    .font(.subheadline.weight(.semibold))
+
+                Picker(L10n.string("Codex chat", locale: languageSettings.locale), selection: $store.selectedCodexSessionID) {
+                    ForEach(store.codexSessions) { session in
+                        Text(session.displayTitle)
+                            .lineLimit(1)
+                            .tag(Optional(session.id))
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 360)
+
+                Button {
+                    store.refreshRecommendations()
+                } label: {
+                    Label(L10n.string("Refresh recommendations", locale: languageSettings.locale), systemImage: "wand.and.sparkles")
+                }
+                .buttonStyle(.bordered)
+            }
+
+            if let session = store.selectedCodexSession {
+                Text(session.displayTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            } else if let recommendationError = store.recommendationError {
+                Text(recommendationError)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+            }
+        }
     }
 
     private func applySection(_ section: LibrarySection) {
         switch section {
         case .library: store.selectedFilter = .all
+        case .recommendations:
+            store.selectedFilter = .recommended
+            store.refreshRecommendations()
         case .standaloneSkills: store.selectedFilter = .all
         case .plugins: store.selectedFilter = .all
         case .pluginSkills: store.selectedFilter = .plugin
@@ -221,6 +280,7 @@ struct SkillLibraryView: View {
 
     private func section(for filter: SkillLibraryFilter) -> LibrarySection {
         switch filter {
+        case .recommended: .recommendations
         case .favorites: .favorites
         case .recent: .recents
         case .plugin: .pluginSkills
@@ -240,6 +300,8 @@ struct SkillLibraryView: View {
 
     private var displayedSkills: [Skill] {
         switch selectedSection {
+        case .recommendations:
+            return filtered(store.recommendedSkills)
         case .standaloneSkills:
             return filtered(store.standaloneSkills)
         case .pluginSkills:

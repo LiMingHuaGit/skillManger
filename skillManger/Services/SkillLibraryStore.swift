@@ -87,6 +87,8 @@ final class UserDefaultsSkillPreferences: SkillPreferencesStoring {
 final class SkillLibraryStore: ObservableObject {
     private let preferences: SkillPreferencesStoring
     private let indexer: SkillIndexer
+    private let codexSessionReader: CodexSessionContextReader
+    private let recommender: SkillRecommender
 
     @Published var skills: [Skill]
     @Published var roots: [SkillRoot] {
@@ -98,10 +100,21 @@ final class SkillLibraryStore: ObservableObject {
     @Published var selectedSkillID: Skill.ID?
     @Published var lastCopiedText: String?
     @Published var toastMessage: String?
+    @Published var codexSessions: [CodexSessionContext] = []
+    @Published var selectedCodexSessionID: CodexSessionContext.ID? {
+        didSet {
+            guard selectedCodexSessionID != oldValue else { return }
+            updateSkillRecommendations()
+        }
+    }
+    @Published var skillRecommendations: [SkillRecommendation] = []
+    @Published var recommendationError: String?
 
     init(
         preferences: SkillPreferencesStoring = UserDefaultsSkillPreferences(),
         indexer: SkillIndexer = SkillIndexer(),
+        codexSessionReader: CodexSessionContextReader = CodexSessionContextReader(),
+        recommender: SkillRecommender = SkillRecommender(),
         initialSkills: [Skill] = [],
         roots: [SkillRoot]? = nil,
         codexConfigURL: URL? = nil,
@@ -109,6 +122,8 @@ final class SkillLibraryStore: ObservableObject {
     ) {
         self.preferences = preferences
         self.indexer = indexer
+        self.codexSessionReader = codexSessionReader
+        self.recommender = recommender
         let resolvedConfigURL = codexConfigURL ?? URL(fileURLWithPath: homeDirectory).appendingPathComponent(".codex/config.toml")
         self.skills = initialSkills
         self.roots = roots ?? Self.preferredRoots(from: preferences.roots, homeDirectory: homeDirectory, codexConfigURL: resolvedConfigURL)
@@ -141,6 +156,7 @@ final class SkillLibraryStore: ObservableObject {
         set {
             objectWillChange.send()
             preferences.showSystemSkills = newValue
+            updateSkillRecommendations()
         }
     }
 
@@ -149,6 +165,7 @@ final class SkillLibraryStore: ObservableObject {
         set {
             objectWillChange.send()
             preferences.showPluginSkills = newValue
+            updateSkillRecommendations()
         }
     }
 
@@ -183,8 +200,16 @@ final class SkillLibraryStore: ObservableObject {
             candidates = candidates.filter { $0.sourceType != .plugin }
         }
 
+        if selectedFilter == .recommended {
+            candidates = skillRecommendations.map(\.skill).filter { candidate in
+                candidates.contains(where: { $0.id == candidate.id })
+            }
+        }
+
         switch selectedFilter {
         case .all:
+            break
+        case .recommended:
             break
         case .favorites:
             candidates = candidates.filter { favoriteSkillIDs.contains($0.id) }
@@ -207,7 +232,20 @@ final class SkillLibraryStore: ObservableObject {
             }
         }
 
+        if selectedFilter == .recommended {
+            return candidates
+        }
+
         return sort(candidates)
+    }
+
+    var selectedCodexSession: CodexSessionContext? {
+        guard let selectedCodexSessionID else { return codexSessions.first }
+        return codexSessions.first { $0.id == selectedCodexSessionID } ?? codexSessions.first
+    }
+
+    var recommendedSkills: [Skill] {
+        skillRecommendations.map(\.skill)
     }
 
     var standaloneSkills: [Skill] {
@@ -261,6 +299,45 @@ final class SkillLibraryStore: ObservableObject {
         let enabledRoots = roots.filter(\.enabled).map { URL(fileURLWithPath: NSString(string: $0.path).expandingTildeInPath) }
         skills = try indexer.index(rootURLs: enabledRoots)
         selectedSkillID = selectedSkillID ?? skills.first?.id
+        refreshRecommendations()
+    }
+
+    func refreshRecommendations() {
+        do {
+            let sessions = try codexSessionReader.recentContexts()
+            codexSessions = sessions
+            if selectedCodexSessionID == nil || sessions.contains(where: { $0.id == selectedCodexSessionID }) == false {
+                selectedCodexSessionID = sessions.first?.id
+            } else {
+                updateSkillRecommendations()
+            }
+            recommendationError = nil
+        } catch {
+            codexSessions = []
+            skillRecommendations = []
+            recommendationError = error.localizedDescription
+        }
+    }
+
+    func recommendation(for skillID: Skill.ID) -> SkillRecommendation? {
+        skillRecommendations.first { $0.skill.id == skillID }
+    }
+
+    private func updateSkillRecommendations() {
+        guard let selectedCodexSession else {
+            skillRecommendations = []
+            return
+        }
+
+        var candidates = skills
+        if showSystemSkills == false {
+            candidates = candidates.filter { $0.sourceType != .system }
+        }
+        if showPluginSkills == false {
+            candidates = candidates.filter { $0.sourceType != .plugin }
+        }
+
+        skillRecommendations = recommender.recommendations(for: selectedCodexSession, skills: candidates)
     }
 
     func toggleFavorite(skillID: Skill.ID) {

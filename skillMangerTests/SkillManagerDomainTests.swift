@@ -238,6 +238,43 @@ struct SkillManagerDomainTests {
         #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins") == false)
         #expect(rootPaths.contains("\(codexHome.url.path)/.codex/plugins/cache") == false)
     }
+
+    @Test func recommenderMatchesCodexSessionContextToSkills() throws {
+        let context = CodexSessionContext(
+            id: "thread-1",
+            title: "修复 macOS 刘海窗口 hover 收起和 SwiftUI 布局",
+            preview: "窗口展开不居中，需要调整 NSPanel frame 和 SwiftUI view layout",
+            cwd: "/Users/ming/myProductWorkspace/ios/skillManger",
+            updatedAt: Date(timeIntervalSince1970: 1_784_000_000),
+            recentUserMessages: ["参考 boring.notch 的 window management 实现"]
+        )
+        let skills: [Skill] = [
+            .fixture(name: "window-management", description: "Customize macOS SwiftUI windows and panel placement.", sourceType: .plugin),
+            .fixture(name: "lark-doc", description: "Read and edit Feishu docs.", sourceType: .local),
+            .fixture(name: "stripe-best-practices", description: "Guide Stripe integration decisions.", sourceType: .plugin)
+        ]
+
+        let recommendations = SkillRecommender().recommendations(for: context, skills: skills)
+
+        #expect(recommendations.first?.skill.name == "window-management")
+        #expect(recommendations.first?.matchedTerms.contains("window") == true)
+    }
+
+    @Test func codexSessionReaderLoadsLatestSessionIndexEntries() throws {
+        let codexHome = try TemporarySkillRoot()
+        let codexDirectory = codexHome.url.appendingPathComponent(".codex", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexDirectory, withIntermediateDirectories: true)
+        try """
+        {"id":"older","thread_name":"旧会话","updated_at":"2026-08-23T01:00:00.000000Z"}
+        {"id":"active","thread_name":"macOS skill 推荐","updated_at":"2026-08-24T01:00:00.000000Z"}
+        {"id":"active","thread_name":"macOS skill 推荐更新","updated_at":"2026-08-24T02:00:00.000000Z"}
+        """.write(to: codexDirectory.appendingPathComponent("session_index.jsonl"), atomically: true, encoding: .utf8)
+
+        let contexts = try CodexSessionContextReader(codexHomeURL: codexDirectory).recentContexts(limit: 2)
+
+        #expect(contexts.map(\.id) == ["active", "older"])
+        #expect(contexts.first?.title == "macOS skill 推荐更新")
+    }
 }
 
 private extension Skill {

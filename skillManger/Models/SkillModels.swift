@@ -94,6 +94,7 @@ struct PluginPackage: Identifiable, Hashable {
 
 enum SkillLibraryFilter: String, CaseIterable, Identifiable {
     case all
+    case recommended
     case favorites
     case recent
     case local
@@ -105,6 +106,7 @@ enum SkillLibraryFilter: String, CaseIterable, Identifiable {
     var localizationKey: String {
         switch self {
         case .all: "All"
+        case .recommended: "Recommended"
         case .favorites: "Favorites"
         case .recent: "Recent"
         case .local: "Local"
