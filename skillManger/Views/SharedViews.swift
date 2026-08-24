@@ -154,6 +154,6 @@ struct CodexSessionTitleView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
-        .accessibilityLabel("Codex \(session.displayTitle)")
+        .accessibilityLabel(Text(verbatim: "Codex \(session.displayTitle)"))
     }
 }

@@ -231,7 +231,7 @@ struct SkillNotchView: View {
         if scope == .recommended, let session = store.selectedCodexSession {
             HStack(spacing: 6) {
                 CodexSessionTitleView(session: session, font: .caption.weight(.semibold), iconSize: 10)
-                Text("·")
+                Text(verbatim: "·")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.35))
                 Text(L10n.format("%d recommended skills", locale: locale, store.skillRecommendations.count))
