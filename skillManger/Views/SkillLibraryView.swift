@@ -305,7 +305,7 @@ struct SkillLibraryView: View {
     private var displayedSkills: [Skill] {
         switch selectedSection {
         case .recommendations:
-            return filtered(store.recommendedSkills)
+            return filtered(store.recommendationRankedSkills)
         case .standaloneSkills:
             return filtered(store.standaloneSkills)
         case .pluginSkills:

@@ -21,7 +21,6 @@ final class SkillNotchState: ObservableObject {
 
     @Published var isExpanded = false
     @Published private(set) var closedSize = Layout.fallbackClosedSize
-    @Published private(set) var isInteractionPinned = false
 
     var currentSize: CGSize {
         isExpanded ? Self.Layout.openSize : closedSize
@@ -30,11 +29,6 @@ final class SkillNotchState: ObservableObject {
     func updateClosedSize(_ size: CGSize) {
         guard closedSize != size else { return }
         closedSize = size
-    }
-
-    func setInteractionPinned(_ pinned: Bool) {
-        guard isInteractionPinned != pinned else { return }
-        isInteractionPinned = pinned
     }
 
     func expand() {
@@ -259,12 +253,11 @@ final class SkillNotchPanelController {
 
     private func scheduleCollapseIfNeeded() {
         collapseTask?.cancel()
-        guard notchState.isExpanded, notchState.isInteractionPinned == false else { return }
+        guard notchState.isExpanded else { return }
 
         collapseTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: HoverBehavior.collapseDelay)
             guard !Task.isCancelled, let self else { return }
-            guard self.notchState.isInteractionPinned == false else { return }
             guard self.isMouseInsideVisibleNotch(padding: HoverBehavior.expandedExitPadding) == false else { return }
             self.notchState.collapse()
             self.notchWindow?.ignoresMouseEvents = true

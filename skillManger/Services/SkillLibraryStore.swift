@@ -190,21 +190,7 @@ final class SkillLibraryStore: ObservableObject {
     }
 
     var visibleSkills: [Skill] {
-        var candidates = skills
-
-        if showSystemSkills == false {
-            candidates = candidates.filter { $0.sourceType != .system }
-        }
-
-        if showPluginSkills == false {
-            candidates = candidates.filter { $0.sourceType != .plugin }
-        }
-
-        if selectedFilter == .recommended {
-            candidates = skillRecommendations.map(\.skill).filter { candidate in
-                candidates.contains(where: { $0.id == candidate.id })
-            }
-        }
+        var candidates = visibleSkillCandidates
 
         switch selectedFilter {
         case .all:
@@ -233,10 +219,14 @@ final class SkillLibraryStore: ObservableObject {
         }
 
         if selectedFilter == .recommended {
-            return candidates
+            return rankRecommendationsFirst(candidates)
         }
 
         return sort(candidates)
+    }
+
+    var recommendationRankedSkills: [Skill] {
+        rankRecommendationsFirst(visibleSkillCandidates)
     }
 
     var selectedCodexSession: CodexSessionContext? {
@@ -338,6 +328,37 @@ final class SkillLibraryStore: ObservableObject {
         }
 
         skillRecommendations = recommender.recommendations(for: selectedCodexSession, skills: candidates)
+    }
+
+    private var visibleSkillCandidates: [Skill] {
+        var candidates = skills
+
+        if showSystemSkills == false {
+            candidates = candidates.filter { $0.sourceType != .system }
+        }
+
+        if showPluginSkills == false {
+            candidates = candidates.filter { $0.sourceType != .plugin }
+        }
+
+        return candidates
+    }
+
+    private func rankRecommendationsFirst(_ candidates: [Skill]) -> [Skill] {
+        guard skillRecommendations.isEmpty == false else { return sort(candidates) }
+
+        let recommendationRanks = Dictionary(uniqueKeysWithValues: skillRecommendations.enumerated().map { index, recommendation in
+            (recommendation.skill.id, index)
+        })
+
+        let recommended = candidates
+            .filter { recommendationRanks[$0.id] != nil }
+            .sorted { lhs, rhs in
+                (recommendationRanks[lhs.id] ?? Int.max) < (recommendationRanks[rhs.id] ?? Int.max)
+            }
+        let others = sort(candidates.filter { recommendationRanks[$0.id] == nil })
+
+        return recommended + others
     }
 
     func toggleFavorite(skillID: Skill.ID) {

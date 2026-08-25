@@ -54,12 +54,6 @@ struct SkillNotchView: View {
         .preferredColorScheme(.dark)
         .environment(\.locale, languageSettings.locale)
         .animation(openAnimation, value: notchState.isExpanded)
-        .onChange(of: searchText) { _, _ in
-            updateInteractionPin()
-        }
-        .onDisappear {
-            notchState.setInteractionPinned(false)
-        }
     }
 
     private var notchSurface: some View {
@@ -255,7 +249,7 @@ struct SkillNotchView: View {
 
     private var scopedSkills: [Skill] {
         switch scope {
-        case .recommended: store.recommendedSkills
+        case .recommended: store.recommendationRankedSkills
         case .all: store.visibleSkills
         case .standalone: store.standaloneSkills
         case .plugin: store.pluginSkills
@@ -270,10 +264,6 @@ struct SkillNotchView: View {
             ([skill.name, skill.description, skill.sourcePath] + skill.tags)
                 .contains { $0.lowercased().contains(query) }
         }
-    }
-
-    private func updateInteractionPin() {
-        notchState.setInteractionPinned(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
     }
 
     private func copy(_ skill: Skill) {

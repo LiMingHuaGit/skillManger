@@ -125,6 +125,27 @@ struct SkillManagerDomainTests {
         #expect(preferences.usageEvents.count == 1)
     }
 
+    @Test func storeRecommendedFilterSearchesAllSkillsWithRecommendationsFirst() throws {
+        let recommended = Skill.fixture(name: "window-management", description: "Position macOS panels.", sourceType: .plugin)
+        let localMatch = Skill.fixture(name: "local-dependency-manager", description: "Use local shell tools.", sourceType: .local)
+        let pluginMatch = Skill.fixture(name: "shell-debugger", description: "Debug shell failures.", sourceType: .plugin)
+        let store = SkillLibraryStore(
+            preferences: InMemorySkillPreferences(),
+            initialSkills: [localMatch, pluginMatch, recommended]
+        )
+
+        store.skillRecommendations = [
+            SkillRecommendation(skill: recommended, score: 18, matchedTerms: ["window"])
+        ]
+        store.selectedFilter = .recommended
+
+        #expect(store.visibleSkills.map(\.name) == ["window-management", "local-dependency-manager", "shell-debugger"])
+
+        store.searchText = "shell"
+
+        #expect(store.visibleSkills.map(\.name) == ["local-dependency-manager", "shell-debugger"])
+    }
+
     @Test func storeReportsDuplicateSkillsForDetailResolution() throws {
         let store = SkillLibraryStore(
             preferences: InMemorySkillPreferences(),
