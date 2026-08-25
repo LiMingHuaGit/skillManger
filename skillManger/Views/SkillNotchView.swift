@@ -8,24 +8,6 @@
 import AppKit
 import SwiftUI
 
-private enum NotchSkillScope: String, CaseIterable, Identifiable {
-    case recommended
-    case all
-    case standalone
-    case plugin
-
-    var id: String { rawValue }
-
-    func title(locale: Locale) -> String {
-        switch self {
-        case .recommended: L10n.string("Recommended", locale: locale)
-        case .all: L10n.string("All", locale: locale)
-        case .standalone: L10n.string("Standalone Skills", locale: locale)
-        case .plugin: L10n.string("Plugin Skills", locale: locale)
-        }
-    }
-}
-
 struct SkillNotchView: View {
     @Environment(\.locale) private var locale
     @ObservedObject var store: SkillLibraryStore
@@ -35,7 +17,6 @@ struct SkillNotchView: View {
     let openLibrary: () -> Void
     let refresh: () -> Void
 
-    @State private var scope: NotchSkillScope = .recommended
     @State private var searchText = ""
     @State private var toast: String?
     @FocusState private var isSearchFocused: Bool
@@ -119,14 +100,14 @@ struct SkillNotchView: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
-            searchAndScope
+            searchBar
 
             if filteredSkills.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .font(.title2)
                         .foregroundStyle(.white.opacity(0.35))
-                    Text(scope == .recommended ? L10n.string("No recommended skills", locale: locale) : L10n.string("No matching skills", locale: locale))
+                    Text(L10n.string("No matching skills", locale: locale))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(.white.opacity(0.72))
                 }
@@ -147,6 +128,7 @@ struct SkillNotchView: View {
                     NotchSkillRow(
                         skill: skill,
                         isFavorite: store.favoriteSkillIDs.contains(skill.id),
+                        recommendation: store.recommendation(for: skill.id),
                         copyAction: { copy(skill) }
                     )
                 }
@@ -194,7 +176,7 @@ struct SkillNotchView: View {
         .foregroundStyle(.white.opacity(0.72))
     }
 
-    private var searchAndScope: some View {
+    private var searchBar: some View {
         HStack(spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -208,19 +190,18 @@ struct SkillNotchView: View {
             .padding(.vertical, 8)
             .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            Picker("", selection: $scope) {
-                ForEach(NotchSkillScope.allCases) { scope in
-                    Text(scope.title(locale: locale)).tag(scope)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 360)
+            Label(L10n.string("Recommended", locale: locale), systemImage: "sparkles")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Color.accentColor, in: Capsule())
         }
     }
 
     @ViewBuilder
     private var summaryView: some View {
-        if scope == .recommended, let session = store.selectedCodexSession {
+        if let session = store.selectedCodexSession {
             HStack(spacing: 6) {
                 CodexSessionTitleView(session: session, font: .caption.weight(.semibold), iconSize: 10)
                 Text(verbatim: "·")
@@ -247,20 +228,11 @@ struct SkillNotchView: View {
         }
     }
 
-    private var scopedSkills: [Skill] {
-        switch scope {
-        case .recommended: store.recommendationRankedSkills
-        case .all: store.visibleSkills
-        case .standalone: store.standaloneSkills
-        case .plugin: store.pluginSkills
-        }
-    }
-
     private var filteredSkills: [Skill] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard query.isEmpty == false else { return scopedSkills }
+        guard query.isEmpty == false else { return store.recommendationRankedSkills }
 
-        return scopedSkills.filter { skill in
+        return store.recommendationRankedSkills.filter { skill in
             ([skill.name, skill.description, skill.sourcePath] + skill.tags)
                 .contains { $0.lowercased().contains(query) }
         }
@@ -283,6 +255,7 @@ private struct NotchSkillRow: View {
     @Environment(\.locale) private var locale
     let skill: Skill
     let isFavorite: Bool
+    let recommendation: SkillRecommendation?
     let copyAction: () -> Void
 
     var body: some View {
@@ -308,6 +281,16 @@ private struct NotchSkillRow: View {
             }
 
             Spacer(minLength: 8)
+
+            if recommendation != nil {
+                Label(L10n.string("Recommended", locale: locale), systemImage: "sparkles")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .labelStyle(.titleAndIcon)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.90), in: Capsule())
+            }
 
             Text(skill.sourceType == .plugin ? L10n.string("Plugin", locale: locale) : L10n.string("Skill", locale: locale))
                 .font(.caption2.weight(.semibold))
