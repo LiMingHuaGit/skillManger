@@ -61,8 +61,16 @@ final class SkillNotchPanelController {
     private var activeScreen: NSScreen?
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
+    private var expandTask: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
     private var cancellables: Set<AnyCancellable> = []
+
+    private enum HoverBehavior {
+        static let expandDelay: Duration = .milliseconds(1_000)
+        static let collapseDelay: Duration = .milliseconds(150)
+        static let closedTriggerPadding: CGFloat = 3
+        static let expandedExitPadding: CGFloat = 8
+    }
 
     init(appState: SkillManagerAppState) {
         self.appState = appState
@@ -87,6 +95,7 @@ final class SkillNotchPanelController {
     }
 
     deinit {
+        expandTask?.cancel()
         collapseTask?.cancel()
         if let globalMouseMonitor {
             NSEvent.removeMonitor(globalMouseMonitor)
@@ -131,6 +140,7 @@ final class SkillNotchPanelController {
     }
 
     func hideNotch() {
+        cancelPendingExpansion()
         collapseTask?.cancel()
         notchWindow?.orderOut(nil)
     }
@@ -214,20 +224,44 @@ final class SkillNotchPanelController {
 
     private func handleMouseMoved() {
         if notchState.isExpanded == false {
-            if isMouseInsideVisibleNotch(padding: 4) {
-                notchWindow?.ignoresMouseEvents = false
-                notchState.expand()
+            if isMouseInsideVisibleNotch(padding: HoverBehavior.closedTriggerPadding) {
+                scheduleExpansionIfNeeded()
+            } else {
+                cancelPendingExpansion()
+                notchWindow?.ignoresMouseEvents = true
             }
             return
         }
 
         guard notchState.isExpanded else { return }
+        cancelPendingExpansion()
+        notchWindow?.ignoresMouseEvents = false
 
-        if isMouseInsideVisibleNotch(padding: 8) {
+        if isMouseInsideVisibleNotch(padding: HoverBehavior.expandedExitPadding) {
             collapseTask?.cancel()
         } else {
             scheduleCollapseIfNeeded()
         }
+    }
+
+    private func scheduleExpansionIfNeeded() {
+        collapseTask?.cancel()
+        guard expandTask == nil, notchState.isExpanded == false else { return }
+
+        expandTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: HoverBehavior.expandDelay)
+            guard !Task.isCancelled, let self else { return }
+            self.expandTask = nil
+            guard self.notchState.isExpanded == false else { return }
+            guard self.isMouseInsideVisibleNotch(padding: HoverBehavior.closedTriggerPadding) else { return }
+            self.notchWindow?.ignoresMouseEvents = false
+            self.notchState.expand()
+        }
+    }
+
+    private func cancelPendingExpansion() {
+        expandTask?.cancel()
+        expandTask = nil
     }
 
     private func scheduleCollapseIfNeeded() {
@@ -235,11 +269,12 @@ final class SkillNotchPanelController {
         guard notchState.isExpanded, notchState.isInteractionPinned == false else { return }
 
         collapseTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(450))
+            try? await Task.sleep(for: HoverBehavior.collapseDelay)
             guard !Task.isCancelled, let self else { return }
             guard self.notchState.isInteractionPinned == false else { return }
-            guard self.isMouseInsideVisibleNotch(padding: 8) == false else { return }
+            guard self.isMouseInsideVisibleNotch(padding: HoverBehavior.expandedExitPadding) == false else { return }
             self.notchState.collapse()
+            self.notchWindow?.ignoresMouseEvents = true
         }
     }
 

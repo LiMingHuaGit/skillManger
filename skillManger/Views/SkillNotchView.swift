@@ -37,7 +37,6 @@ struct SkillNotchView: View {
 
     @State private var scope: NotchSkillScope = .recommended
     @State private var searchText = ""
-    @State private var collapseTask: Task<Void, Never>?
     @State private var toast: String?
     @FocusState private var isSearchFocused: Bool
 
@@ -94,7 +93,6 @@ struct SkillNotchView: View {
         .overlay {
             shape.stroke(.white.opacity(notchState.isExpanded ? 0.10 : 0.06), lineWidth: 1)
         }
-        .onHover(perform: handleHover)
         .onTapGesture {
             if notchState.isExpanded == false {
                 notchState.expand()
@@ -271,21 +269,6 @@ struct SkillNotchView: View {
         return scopedSkills.filter { skill in
             ([skill.name, skill.description, skill.sourcePath] + skill.tags)
                 .contains { $0.lowercased().contains(query) }
-        }
-    }
-
-    private func handleHover(_ hovering: Bool) {
-        collapseTask?.cancel()
-
-        if hovering {
-            notchState.expand()
-        } else {
-            collapseTask = Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(700))
-                guard !Task.isCancelled else { return }
-                guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                notchState.collapse()
-            }
         }
     }
 
