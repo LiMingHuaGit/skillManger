@@ -13,10 +13,12 @@ final class SkillManagerAppState: ObservableObject {
 
     let store: SkillLibraryStore
     let languageSettings: AppLanguageSettings
+    let launchAtLoginSettings: LaunchAtLoginSettings
 
     private init() {
         store = SkillLibraryStore()
         languageSettings = AppLanguageSettings()
+        launchAtLoginSettings = LaunchAtLoginSettings()
     }
 
     @MainActor

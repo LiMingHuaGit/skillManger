@@ -12,12 +12,14 @@ struct SettingsView: View {
     @Environment(\.locale) private var locale
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
+    @ObservedObject var launchAtLoginSettings: LaunchAtLoginSettings
     @State private var customTemplateName: String = String(localized: "Custom Platform")
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 languageSection
+                launchSection
                 rootsSection
                 templatesSection
             }
@@ -42,6 +44,37 @@ struct SettingsView: View {
             Text("Language changes apply immediately in the app. The Dock name follows this choice the next time the app launches.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+    }
+
+    private var launchSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.string("Launch", locale: locale))
+                .font(.title2.weight(.semibold))
+
+            Toggle(isOn: Binding(
+                get: { launchAtLoginSettings.isEnabled },
+                set: { launchAtLoginSettings.setEnabled($0) }
+            )) {
+                Label(L10n.string("Launch at Login", locale: locale), systemImage: "power")
+            }
+
+            if launchAtLoginSettings.needsApproval {
+                Text(L10n.string("Launch at login may need approval in System Settings.", locale: locale))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if let errorMessage = launchAtLoginSettings.errorMessage {
+                Text(L10n.format("Launch at login failed: %@", locale: locale, errorMessage))
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else {
+                Text(L10n.string("Start Skill Manager automatically when you sign in.", locale: locale))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(12)
         .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))

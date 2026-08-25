@@ -145,14 +145,6 @@ final class SkillNotchPanelController {
         notchWindow?.orderOut(nil)
     }
 
-    func toggleNotchVisibility() {
-        if notchWindow?.isVisible == true {
-            hideNotch()
-        } else {
-            showNotch()
-        }
-    }
-
     func showLibraryWindow() {
         appState.refreshIfNeeded()
 
@@ -168,7 +160,8 @@ final class SkillNotchPanelController {
             window.contentView = NSHostingView(
                 rootView: ContentView(
                     store: appState.store,
-                    languageSettings: appState.languageSettings
+                    languageSettings: appState.languageSettings,
+                    launchAtLoginSettings: appState.launchAtLoginSettings
                 )
             )
             window.center()

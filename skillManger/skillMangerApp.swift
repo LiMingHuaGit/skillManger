@@ -12,15 +12,10 @@ import SwiftUI
 struct skillMangerApp: App {
     @NSApplicationDelegateAdaptor(SkillManagerAppDelegate.self) private var appDelegate
     @StateObject private var languageSettings = SkillManagerAppState.shared.languageSettings
+    @StateObject private var launchAtLoginSettings = SkillManagerAppState.shared.launchAtLoginSettings
 
     var body: some Scene {
         MenuBarExtra {
-            Button {
-                SkillNotchPanelController.shared.toggleNotchVisibility()
-            } label: {
-                Label(L10n.string("Show or Hide Notch", locale: languageSettings.locale), systemImage: "rectangle.topthird.inset.filled")
-            }
-
             Button {
                 SkillNotchPanelController.shared.showLibraryWindow()
             } label: {
@@ -32,6 +27,13 @@ struct skillMangerApp: App {
                 SkillNotchPanelController.shared.refreshLibrary()
             } label: {
                 Label(L10n.string("Re-index", locale: languageSettings.locale), systemImage: "arrow.clockwise")
+            }
+
+            Toggle(isOn: Binding(
+                get: { launchAtLoginSettings.isEnabled },
+                set: { launchAtLoginSettings.setEnabled($0) }
+            )) {
+                Label(L10n.string("Launch at Login", locale: languageSettings.locale), systemImage: "power")
             }
 
             Divider()

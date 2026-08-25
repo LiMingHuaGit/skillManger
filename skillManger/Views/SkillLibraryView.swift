@@ -49,6 +49,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 struct SkillLibraryView: View {
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
+    @ObservedObject var launchAtLoginSettings: LaunchAtLoginSettings
     @State private var selectedSection: LibrarySection = .library
     @State private var selectedPluginID: PluginPackage.ID?
 
@@ -66,7 +67,7 @@ struct SkillLibraryView: View {
             .frame(minWidth: 190)
         } content: {
             if selectedSection == .settings {
-                SettingsView(store: store, languageSettings: languageSettings)
+                SettingsView(store: store, languageSettings: languageSettings, launchAtLoginSettings: launchAtLoginSettings)
             } else if selectedSection == .plugins {
                 pluginList
             } else {
