@@ -14,7 +14,7 @@ struct skillMangerApp: App {
     @StateObject private var languageSettings = SkillManagerAppState.shared.languageSettings
 
     var body: some Scene {
-        MenuBarExtra("Skill Manager", systemImage: "sparkle.magnifyingglass") {
+        MenuBarExtra {
             Button {
                 SkillNotchPanelController.shared.toggleNotchVisibility()
             } label: {
@@ -48,7 +48,25 @@ struct skillMangerApp: App {
                 NSApp.terminate(nil)
             }
             .keyboardShortcut("q", modifiers: .command)
+        } label: {
+            SkillMenuBarLabel()
         }
+    }
+}
+
+private struct SkillMenuBarLabel: View {
+    var body: some View {
+        Label {
+            Text(verbatim: "skills")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+        } icon: {
+            Image(systemName: "sparkle.magnifyingglass")
+                .font(.system(size: 13, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+        }
+        .labelStyle(.titleAndIcon)
+        .lineLimit(1)
+        .help("Skill Manager")
     }
 }
 
