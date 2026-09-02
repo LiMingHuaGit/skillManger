@@ -17,6 +17,15 @@ enum SkillOrigin: String, CaseIterable, Identifiable {
         localized(locale: locale, english: englishTitle, chinese: chineseTitle)
     }
 
+    func compactTitle(locale: Locale) -> String {
+        switch self {
+        case .official:
+            localized(locale: locale, english: "Official", chinese: "官方")
+        case .userInstalled:
+            localized(locale: locale, english: "User", chinese: "用户")
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .official: "checkmark.seal.fill"
@@ -53,6 +62,19 @@ enum SkillCategory: String, CaseIterable, Identifiable {
 
     func title(locale: Locale) -> String {
         localized(locale: locale, english: englishTitle, chinese: chineseTitle)
+    }
+
+    func compactTitle(locale: Locale) -> String {
+        switch self {
+        case .uiDesign: localized(locale: locale, english: "UI", chinese: "UI")
+        case .codeDevelopment: localized(locale: locale, english: "Code", chinese: "代码")
+        case .softwareOperations: localized(locale: locale, english: "Ops", chinese: "操作")
+        case .imageMedia: localized(locale: locale, english: "Media", chinese: "图像")
+        case .documentsOffice: localized(locale: locale, english: "Docs", chinese: "文档")
+        case .dataAnalysis: localized(locale: locale, english: "Data", chinese: "数据")
+        case .communication: localized(locale: locale, english: "Comms", chinese: "协作")
+        case .other: localized(locale: locale, english: "Other", chinese: "其他")
+        }
     }
 
     var systemImage: String {

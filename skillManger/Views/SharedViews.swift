@@ -14,6 +14,8 @@ struct SourceBadge: View {
     var body: some View {
         Text(L10n.string(sourceType.localizationKey, locale: locale))
             .font(.caption.weight(.medium))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(sourceColor.opacity(0.55), in: Capsule())
@@ -37,6 +39,8 @@ struct HealthBadge: View {
     var body: some View {
         Label(L10n.string(status.localizationKey, locale: locale), systemImage: status == .healthy ? "checkmark.circle" : "exclamationmark.triangle")
             .font(.caption.weight(.medium))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(status == .healthy ? Color.secondary : Color.orange)
             .accessibilityLabel(L10n.format("Health: %@", locale: locale, L10n.string(status.localizationKey, locale: locale)))
     }
@@ -45,30 +49,44 @@ struct HealthBadge: View {
 struct OriginBadge: View {
     @Environment(\.locale) private var locale
     let origin: SkillOrigin
+    var compact = false
 
     var body: some View {
-        Label(origin.title(locale: locale), systemImage: origin.systemImage)
+        HStack(spacing: 4) {
+            Image(systemName: origin.systemImage)
+            Text(compact ? origin.compactTitle(locale: locale) : origin.title(locale: locale))
+        }
             .font(.caption.weight(.medium))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(origin == .official ? Color.blue : Color.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background((origin == .official ? Color.blue : Color.secondary).opacity(0.10), in: Capsule())
             .help(origin.title(locale: locale))
+            .accessibilityLabel(origin.title(locale: locale))
     }
 }
 
 struct CategoryBadge: View {
     @Environment(\.locale) private var locale
     let category: SkillCategory
+    var compact = false
 
     var body: some View {
-        Label(category.title(locale: locale), systemImage: category.systemImage)
+        HStack(spacing: 4) {
+            Image(systemName: category.systemImage)
+            Text(compact ? category.compactTitle(locale: locale) : category.title(locale: locale))
+        }
             .font(.caption.weight(.medium))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(.quaternary.opacity(0.45), in: Capsule())
             .help(category.title(locale: locale))
+            .accessibilityLabel(category.title(locale: locale))
     }
 }
 
@@ -109,8 +127,8 @@ struct SkillRowView: View {
 
             HStack {
                 HealthBadge(status: skill.healthStatus)
-                OriginBadge(origin: skill.origin)
-                CategoryBadge(category: skill.category)
+                OriginBadge(origin: skill.origin, compact: true)
+                CategoryBadge(category: skill.category, compact: true)
                 Spacer()
                 Text(skill.sourcePath)
                     .font(.caption.monospaced())
@@ -153,8 +171,8 @@ struct RecommendedSkillRowView: View {
                 .lineLimit(2)
 
             HStack(spacing: 6) {
-                OriginBadge(origin: recommendation.skill.origin)
-                CategoryBadge(category: recommendation.skill.category)
+                OriginBadge(origin: recommendation.skill.origin, compact: true)
+                CategoryBadge(category: recommendation.skill.category, compact: true)
                 Text(L10n.string("Matched", locale: locale))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)

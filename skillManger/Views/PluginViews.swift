@@ -200,8 +200,8 @@ private struct PluginSkillSummaryRow: View {
                     .lineLimit(2)
 
                 HStack(spacing: 6) {
-                    OriginBadge(origin: skill.origin)
-                    CategoryBadge(category: skill.category)
+                    OriginBadge(origin: skill.origin, compact: true)
+                    CategoryBadge(category: skill.category, compact: true)
                 }
 
                 Text(skill.sourcePath)
