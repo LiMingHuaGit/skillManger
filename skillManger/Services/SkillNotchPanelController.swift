@@ -45,7 +45,7 @@ final class SkillNotchState: ObservableObject {
 }
 
 @MainActor
-final class SkillNotchPanelController {
+final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     static let shared = SkillNotchPanelController(appState: .shared)
 
     private let appState: SkillManagerAppState
@@ -68,6 +68,7 @@ final class SkillNotchPanelController {
 
     init(appState: SkillManagerAppState) {
         self.appState = appState
+        super.init()
 
         notchState.$isExpanded
             .dropFirst()
@@ -151,6 +152,8 @@ final class SkillNotchPanelController {
             )
             window.title = "Skill Manager"
             window.titlebarAppearsTransparent = true
+            window.isReleasedWhenClosed = false
+            window.delegate = self
             window.contentView = NSHostingView(
                 rootView: ContentView(
                     store: appState.store,
@@ -162,9 +165,18 @@ final class SkillNotchPanelController {
             libraryWindowController = NSWindowController(window: window)
         }
 
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         libraryWindowController?.showWindow(nil)
         libraryWindowController?.window?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let closingWindow = notification.object as? NSWindow,
+              closingWindow === libraryWindowController?.window else { return }
+
+        libraryWindowController = nil
+        NSApp.setActivationPolicy(.accessory)
     }
 
     func refreshLibrary() {

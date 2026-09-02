@@ -71,6 +71,7 @@ struct PluginDetailView: View {
                     }
                     .padding(24)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
                 }
                 .navigationTitle(package.name)
             } else {
