@@ -23,16 +23,17 @@ struct SettingsView: View {
                 rootsSection
                 templatesSection
             }
-            .padding(24)
+            .padding(28)
+            .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .background(SkillManagerTheme.canvas)
         .navigationTitle("Settings")
     }
 
     private var languageSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Language")
-                .font(.title2.weight(.semibold))
+            PanelSectionTitle(title: "Language", systemImage: "globe")
 
             Picker("App language", selection: $languageSettings.selection) {
                 ForEach(AppLanguage.allCases) { language in
@@ -45,15 +46,13 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(12)
-        .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+        .padding(16)
+        .panelSurface(emphasized: true)
     }
 
     private var launchSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.string("Launch", locale: locale))
-                .font(.title2.weight(.semibold))
+            PanelSectionTitle(title: L10n.string("Launch", locale: locale), systemImage: "power")
 
             Toggle(isOn: Binding(
                 get: { launchAtLoginSettings.isEnabled },
@@ -76,16 +75,14 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(12)
-        .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+        .padding(16)
+        .panelSurface(emphasized: true)
     }
 
     private var rootsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Skill roots")
-                    .font(.title2.weight(.semibold))
+                PanelSectionTitle(title: "Skill roots", systemImage: "externaldrive")
                 Spacer()
                 Button {
                     addRootWithPanel()
@@ -98,7 +95,7 @@ struct SettingsView: View {
                     Label("Re-index", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.black)
+                .tint(SkillManagerTheme.accent)
             }
 
             Toggle("Show system skills", isOn: Binding(
@@ -128,18 +125,18 @@ struct SettingsView: View {
                     .buttonStyle(.borderless)
                     .accessibilityLabel(String(localized: "Remove root"))
                 }
-                .padding(10)
-                .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+                .padding(12)
+                .background(SkillManagerTheme.surface, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
             }
         }
+        .padding(16)
+        .panelSurface(emphasized: true)
     }
 
     private var templatesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Copy templates")
-                    .font(.title2.weight(.semibold))
+                PanelSectionTitle(title: "Copy templates", systemImage: "doc.on.doc")
                 Spacer()
                 Button("Reset templates") {
                     store.resetTemplates()
@@ -170,6 +167,8 @@ struct SettingsView: View {
                 TemplateEditorRow(store: store, template: template)
             }
         }
+        .padding(16)
+        .panelSurface(emphasized: true)
     }
 
     private func addRootWithPanel() {
@@ -214,10 +213,10 @@ private struct TemplateEditorRow: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 240)
                 Text(templateType)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
+                    .font(.caption2.weight(.medium))
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .background(.quaternary.opacity(0.45), in: Capsule())
+                    .background(SkillManagerTheme.quietFill, in: Capsule())
                 if isBuiltIn {
                     Text("Built-in")
                         .font(.caption)
@@ -237,14 +236,14 @@ private struct TemplateEditorRow: View {
                 .font(.system(.caption, design: .monospaced))
                 .frame(minHeight: 76)
                 .scrollContentBackground(.hidden)
-                .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+                .padding(8)
+                .background(SkillManagerTheme.surface, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
 
             Text("Variables: $skill_name, $skill_path, $plugin_name, $plugin_id, $description, $use_case")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(10)
-        .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+        .padding(12)
+        .background(SkillManagerTheme.quietFill, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
     }
 }

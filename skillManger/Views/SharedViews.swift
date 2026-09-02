@@ -7,27 +7,92 @@
 
 import SwiftUI
 
+enum SkillManagerTheme {
+    static let accent = Color(red: 0.08, green: 0.48, blue: 0.45)
+    static let accentSoft = accent.opacity(0.12)
+    static let canvas = Color(nsColor: .windowBackgroundColor)
+    static let surface = Color(nsColor: .controlBackgroundColor)
+    static let elevatedSurface = Color(nsColor: .textBackgroundColor)
+    static let subtleBorder = Color.primary.opacity(0.08)
+    static let quietFill = Color.primary.opacity(0.055)
+    static let selectionFill = accent.opacity(0.13)
+
+    static let panelRadius: CGFloat = 8
+    static let controlRadius: CGFloat = 7
+
+    static var responsiveSpring: Animation {
+        .spring(response: 0.32, dampingFraction: 0.86)
+    }
+}
+
+private struct PanelSurfaceModifier: ViewModifier {
+    let emphasized: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                emphasized ? SkillManagerTheme.elevatedSurface : SkillManagerTheme.surface,
+                in: RoundedRectangle(cornerRadius: SkillManagerTheme.panelRadius, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: SkillManagerTheme.panelRadius, style: .continuous)
+                    .stroke(SkillManagerTheme.subtleBorder, lineWidth: 1)
+            }
+    }
+}
+
+extension View {
+    func panelSurface(emphasized: Bool = false) -> some View {
+        modifier(PanelSurfaceModifier(emphasized: emphasized))
+    }
+}
+
+struct PanelSectionTitle: View {
+    let title: String
+    let systemImage: String
+    var detail: String?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(SkillManagerTheme.accent)
+                .frame(width: 20, height: 20)
+
+            Text(title)
+                .font(.headline)
+
+            if let detail {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 struct SourceBadge: View {
     @Environment(\.locale) private var locale
     let sourceType: SkillSourceType
 
     var body: some View {
         Text(L10n.string(sourceType.localizationKey, locale: locale))
-            .font(.caption.weight(.medium))
+            .font(.caption2.weight(.semibold))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(sourceColor.opacity(0.55), in: Capsule())
+            .foregroundStyle(sourceColor)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(sourceColor.opacity(0.11), in: Capsule())
             .accessibilityLabel(L10n.format("Source: %@", locale: locale, L10n.string(sourceType.localizationKey, locale: locale)))
     }
 
     private var sourceColor: Color {
         switch sourceType {
-        case .local: Color(red: 0.86, green: 0.93, blue: 0.69)
-        case .system: Color(red: 0.95, green: 0.79, blue: 0.71)
-        case .plugin: Color(red: 0.77, green: 0.69, blue: 0.96)
-        case .project: Color(red: 0.78, green: 0.90, blue: 0.80)
+        case .local: SkillManagerTheme.accent
+        case .system: Color.orange
+        case .plugin: Color.indigo
+        case .project: Color.blue
         }
     }
 }
@@ -38,7 +103,7 @@ struct HealthBadge: View {
 
     var body: some View {
         Label(L10n.string(status.localizationKey, locale: locale), systemImage: status == .healthy ? "checkmark.circle" : "exclamationmark.triangle")
-            .font(.caption.weight(.medium))
+            .font(.caption2.weight(.medium))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(status == .healthy ? Color.secondary : Color.orange)
@@ -56,13 +121,13 @@ struct OriginBadge: View {
             Image(systemName: origin.systemImage)
             Text(compact ? origin.compactTitle(locale: locale) : origin.title(locale: locale))
         }
-            .font(.caption.weight(.medium))
+            .font(.caption2.weight(.medium))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(origin == .official ? Color.blue : Color.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background((origin == .official ? Color.blue : Color.secondary).opacity(0.10), in: Capsule())
+            .foregroundStyle(origin == .official ? SkillManagerTheme.accent : Color.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background((origin == .official ? SkillManagerTheme.accent : Color.secondary).opacity(0.09), in: Capsule())
             .help(origin.title(locale: locale))
             .accessibilityLabel(origin.title(locale: locale))
     }
@@ -78,13 +143,13 @@ struct CategoryBadge: View {
             Image(systemName: category.systemImage)
             Text(compact ? category.compactTitle(locale: locale) : category.title(locale: locale))
         }
-            .font(.caption.weight(.medium))
+            .font(.caption2.weight(.medium))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.quaternary.opacity(0.45), in: Capsule())
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(SkillManagerTheme.quietFill, in: Capsule())
             .help(category.title(locale: locale))
             .accessibilityLabel(category.title(locale: locale))
     }
@@ -98,6 +163,8 @@ struct EmptyStateView: View {
     var body: some View {
         ContentUnavailableView(title, systemImage: systemImage, description: Text(message))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(.secondary)
     }
 }
 
@@ -106,10 +173,10 @@ struct SkillRowView: View {
     let isFavorite: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline) {
                 Text(skill.name)
-                    .font(.headline)
+                    .font(.system(.body, design: .rounded, weight: .semibold))
                     .lineLimit(1)
                 if isFavorite {
                     Image(systemName: "star.fill")
@@ -121,23 +188,18 @@ struct SkillRowView: View {
             }
 
             Text(skill.description)
-                .font(.subheadline)
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            HStack {
+            HStack(spacing: 6) {
                 HealthBadge(status: skill.healthStatus)
                 OriginBadge(origin: skill.origin, compact: true)
                 CategoryBadge(category: skill.category, compact: true)
-                Spacer()
-                Text(skill.sourcePath)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }
@@ -148,10 +210,10 @@ struct RecommendedSkillRowView: View {
     let isFavorite: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline) {
                 Text(recommendation.skill.name)
-                    .font(.headline)
+                    .font(.system(.body, design: .rounded, weight: .semibold))
                     .lineLimit(1)
                 if isFavorite {
                     Image(systemName: "star.fill")
@@ -160,13 +222,13 @@ struct RecommendedSkillRowView: View {
                 }
                 Spacer(minLength: 8)
                 Label("\(Int(recommendation.score.rounded()))", systemImage: "sparkles")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.blue)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(SkillManagerTheme.accent)
                 SourceBadge(sourceType: recommendation.skill.sourceType)
             }
 
             Text(recommendation.skill.description)
-                .font(.subheadline)
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
@@ -183,7 +245,8 @@ struct RecommendedSkillRowView: View {
                     .truncationMode(.tail)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }
@@ -198,11 +261,11 @@ struct CodexSessionTitleView: View {
             Image(systemName: "chevron.left.forwardslash.chevron.right")
                 .font(.system(size: iconSize, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.blue)
+                .foregroundStyle(SkillManagerTheme.accent)
 
             Text(session.displayTitle)
                 .font(font)
-                .foregroundStyle(.blue)
+                .foregroundStyle(SkillManagerTheme.accent)
                 .lineLimit(1)
                 .truncationMode(.tail)
         }

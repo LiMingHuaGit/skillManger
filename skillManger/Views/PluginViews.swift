@@ -13,11 +13,15 @@ struct PluginRowView: View {
     let package: PluginPackage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline) {
-                Label(package.name, systemImage: "puzzlepiece.extension")
-                    .font(.headline)
-                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Image(systemName: "puzzlepiece.extension.fill")
+                        .foregroundStyle(SkillManagerTheme.accent)
+                    Text(package.name)
+                        .font(.system(.body, design: .rounded, weight: .semibold))
+                        .lineLimit(1)
+                }
 
                 Spacer(minLength: 8)
 
@@ -28,10 +32,11 @@ struct PluginRowView: View {
 
             HStack(spacing: 8) {
                 Text(package.marketplaceID)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.quaternary.opacity(0.45), in: Capsule())
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(SkillManagerTheme.accent)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(SkillManagerTheme.accentSoft, in: Capsule())
 
                 if let version = package.version {
                     Text(version)
@@ -46,7 +51,8 @@ struct PluginRowView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
@@ -69,10 +75,12 @@ struct PluginDetailView: View {
                         metadataPanel(for: package)
                         skillsPanel(for: package)
                     }
-                    .padding(24)
+                    .padding(28)
+                    .frame(maxWidth: 920, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
                 }
+                .background(SkillManagerTheme.canvas)
                 .navigationTitle(package.name)
             } else {
                 EmptyStateView(
@@ -85,21 +93,28 @@ struct PluginDetailView: View {
     }
 
     private func header(for package: PluginPackage) -> some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: "puzzlepiece.extension.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(SkillManagerTheme.accent)
+                .frame(width: 44, height: 44)
+                .background(SkillManagerTheme.accentSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
             VStack(alignment: .leading, spacing: 8) {
                 Text(package.name)
-                    .font(.largeTitle.weight(.semibold))
+                    .font(.system(.title, design: .rounded, weight: .bold))
                 Text(package.displayName)
-                    .font(.title3)
+                    .font(.body)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
 
                 HStack(spacing: 8) {
                     Text(package.marketplaceID)
-                        .font(.caption.weight(.medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.quaternary.opacity(0.45), in: Capsule())
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(SkillManagerTheme.accent)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(SkillManagerTheme.accentSoft, in: Capsule())
 
                     if let version = package.version {
                         Text(version)
@@ -111,7 +126,7 @@ struct PluginDetailView: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 8) {
+            HStack(spacing: 8) {
                 Button {
                     copyToPasteboard(package.rootPath)
                     store.toastMessage = L10n.string("Plugin root copied", locale: locale)
@@ -126,32 +141,44 @@ struct PluginDetailView: View {
                     Label(L10n.string("Reveal in Finder", locale: locale), systemImage: "folder")
                 }
                 .buttonStyle(.bordered)
-
-                if let toast = store.toastMessage {
-                    Text(toast)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
         }
     }
 
     private func metadataPanel(for package: PluginPackage) -> some View {
-        Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
-            GridRow { Text(L10n.string("Marketplace", locale: locale)).foregroundStyle(.secondary); Text(package.marketplaceID).textSelection(.enabled) }
-            GridRow { Text(L10n.string("Version", locale: locale)).foregroundStyle(.secondary); Text(package.version ?? "-").textSelection(.enabled) }
-            GridRow { Text(L10n.string("Skills", locale: locale)).foregroundStyle(.secondary); Text("\(package.skillCount)") }
-            GridRow { Text(L10n.string("Plugin root", locale: locale)).foregroundStyle(.secondary); Text(package.rootPath).font(.system(.body, design: .monospaced)).textSelection(.enabled) }
+        VStack(alignment: .leading, spacing: 12) {
+            PanelSectionTitle(title: pluginDetailsTitle, systemImage: "info.circle")
+            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
+                GridRow { Text(L10n.string("Marketplace", locale: locale)).foregroundStyle(.secondary); Text(package.marketplaceID).textSelection(.enabled) }
+                GridRow { Text(L10n.string("Version", locale: locale)).foregroundStyle(.secondary); Text(package.version ?? "-").textSelection(.enabled) }
+                GridRow { Text(L10n.string("Skills", locale: locale)).foregroundStyle(.secondary); Text("\(package.skillCount)") }
+                GridRow { Text(L10n.string("Plugin root", locale: locale)).foregroundStyle(.secondary); Text(package.rootPath).font(.system(.callout, design: .monospaced)).textSelection(.enabled) }
+            }
+            .font(.callout)
+
+            if let toast = store.toastMessage {
+                Label(toast, systemImage: "checkmark.circle.fill")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(SkillManagerTheme.accent)
+                    .transition(.opacity)
+            }
         }
-        .font(.callout)
+        .padding(.horizontal, 2)
+    }
+
+    private var pluginDetailsTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "插件详情" : "Plugin details"
     }
 
     private func skillsPanel(for package: PluginPackage) -> some View {
         let skills = store.skills(forPluginID: package.id)
 
         return VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.string("Skills in this plugin", locale: locale))
-                .font(.headline)
+            PanelSectionTitle(
+                title: L10n.string("Skills in this plugin", locale: locale),
+                systemImage: "square.stack.3d.up",
+                detail: "\(skills.count)"
+            )
 
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(skills) { skill in
@@ -166,11 +193,10 @@ struct PluginDetailView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .background(SkillManagerTheme.surface, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
         }
         .padding(16)
-        .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+        .panelSurface(emphasized: true)
     }
 
     private func copyToPasteboard(_ text: String) {

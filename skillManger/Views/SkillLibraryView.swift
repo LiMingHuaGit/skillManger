@@ -43,6 +43,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 }
 
 struct SkillLibraryView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
     @ObservedObject var launchAtLoginSettings: LaunchAtLoginSettings
@@ -51,15 +52,33 @@ struct SkillLibraryView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selectedSection) {
-                Section("Skill Manager") {
+            VStack(spacing: 0) {
+                sidebarHeader
+
+                List(selection: $selectedSection) {
                     ForEach(LibrarySection.allCases) { section in
-                        Label(section.title(locale: languageSettings.locale), systemImage: section.systemImage)
+                        HStack(spacing: 10) {
+                            Image(systemName: section.systemImage)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(selectedSection == section ? SkillManagerTheme.accent : Color.secondary)
+                                .frame(width: 18)
+                            Text(section.title(locale: languageSettings.locale))
+                                .font(.callout.weight(selectedSection == section ? .semibold : .regular))
+                            Spacer()
+                            if let count = sidebarCount(for: section) {
+                                Text("\(count)")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(.vertical, 3)
                             .tag(section)
                     }
                 }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
             }
-            .navigationTitle(L10n.string("Skills", locale: languageSettings.locale))
+            .background(.thinMaterial)
             .frame(minWidth: 190)
         } content: {
             if selectedSection == .settings {
@@ -70,14 +89,20 @@ struct SkillLibraryView: View {
                 skillList
             }
         } detail: {
-            if selectedSection == .settings {
-                EmptyStateView(title: L10n.string("Settings", locale: languageSettings.locale), message: L10n.string("Manage roots, templates, and indexing from the middle panel.", locale: languageSettings.locale), systemImage: "gearshape")
-            } else if selectedSection == .plugins {
-                PluginDetailView(store: store, package: selectedPlugin)
-            } else {
-                SkillDetailView(store: store, skill: selectedDisplayedSkill)
+            Group {
+                if selectedSection == .settings {
+                    EmptyStateView(title: L10n.string("Settings", locale: languageSettings.locale), message: L10n.string("Manage roots, templates, and indexing from the middle panel.", locale: languageSettings.locale), systemImage: "gearshape")
+                } else if selectedSection == .plugins {
+                    PluginDetailView(store: store, package: selectedPlugin)
+                } else {
+                    SkillDetailView(store: store, skill: selectedDisplayedSkill)
+                }
             }
+            .id(detailIdentity)
+            .transition(.opacity.combined(with: .move(edge: .trailing)))
         }
+        .tint(SkillManagerTheme.accent)
+        .animation(interfaceAnimation, value: detailIdentity)
         .onChange(of: selectedSection) { _, newValue in
             let startedAt = PerformanceDiagnostics.start()
             PerformanceDiagnostics.library.info("section_change_started section=\(newValue.rawValue, privacy: .public) skills=\(store.skills.count)")
@@ -103,9 +128,10 @@ struct SkillLibraryView: View {
 
     private var skillList: some View {
         VStack(spacing: 0) {
+            contentHeader(count: displayedSkills.count)
             toolbar
-                .padding(16)
-                .background(.background)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
             Divider()
 
             if displayedSkills.isEmpty {
@@ -125,11 +151,16 @@ struct SkillLibraryView: View {
                                 .tag(skill.id)
                         }
                     }
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 1, leading: 14, bottom: 1, trailing: 14))
                 }
-                .listStyle(.inset)
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(SkillManagerTheme.canvas)
+                .animation(interfaceAnimation, value: displayedSkills.map(\.id))
             }
         }
-        .navigationTitle(selectedSection.title(locale: languageSettings.locale))
+        .background(SkillManagerTheme.canvas)
         .onAppear(perform: keepSkillSelectionInsideDisplayedSkills)
         .onChange(of: displayedSkills.map(\.id)) { _, _ in
             keepSkillSelectionInsideDisplayedSkills()
@@ -138,20 +169,31 @@ struct SkillLibraryView: View {
 
     private var pluginList: some View {
         VStack(spacing: 0) {
-            HStack {
-                TextField(L10n.string("Search plugin name, marketplace, version, or path", locale: languageSettings.locale), text: $store.searchText)
-                    .textFieldStyle(.roundedBorder)
+            contentHeader(count: displayedPlugins.count)
+
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.tertiary)
+                    TextField(L10n.string("Search plugin name, marketplace, version, or path", locale: languageSettings.locale), text: $store.searchText)
+                        .textFieldStyle(.plain)
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background(SkillManagerTheme.quietFill, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
                     .accessibilityLabel(L10n.string("Search plugins", locale: languageSettings.locale))
 
                 Button {
                     try? store.refresh()
                 } label: {
-                    Label(L10n.string("Re-index", locale: languageSettings.locale), systemImage: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise")
+                        .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.bordered)
+                .help(L10n.string("Re-index", locale: languageSettings.locale))
             }
-            .padding(16)
-            .background(.background)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
             Divider()
 
             if displayedPlugins.isEmpty {
@@ -166,8 +208,12 @@ struct SkillLibraryView: View {
                         PluginRowView(package: package)
                             .tag(package.id)
                     }
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 14, bottom: 2, trailing: 14))
                 }
-                .listStyle(.inset)
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(SkillManagerTheme.canvas)
                 .onAppear {
                     selectedPluginID = selectedPluginID ?? displayedPlugins.first?.id
                 }
@@ -178,36 +224,38 @@ struct SkillLibraryView: View {
                 }
             }
         }
-        .navigationTitle(selectedSection.title(locale: languageSettings.locale))
+        .background(SkillManagerTheme.canvas)
     }
 
     private var toolbar: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                TextField(L10n.string("Search name, tag, use case, or path", locale: languageSettings.locale), text: $store.searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel(L10n.string("Search skills", locale: languageSettings.locale))
-
-                Picker(L10n.string("Sort", locale: languageSettings.locale), selection: $store.sortMode) {
-                    ForEach(SkillSortMode.allCases) { mode in
-                        Text(L10n.string(mode.localizationKey, locale: languageSettings.locale)).tag(mode)
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.tertiary)
+                    TextField(L10n.string("Search name, tag, use case, or path", locale: languageSettings.locale), text: $store.searchText)
+                        .textFieldStyle(.plain)
                 }
-                .labelsHidden()
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background(SkillManagerTheme.quietFill, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
+                    .accessibilityLabel(L10n.string("Search skills", locale: languageSettings.locale))
 
                 Button {
                     try? store.refresh()
                 } label: {
-                    Label(L10n.string("Re-index", locale: languageSettings.locale), systemImage: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise")
+                        .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.bordered)
+                .help(L10n.string("Re-index", locale: languageSettings.locale))
             }
 
             if selectedSection == .recommendations {
                 recommendationToolbar
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Picker(categoryPickerTitle, selection: $store.selectedCategory) {
                     Text(allCategoriesTitle).tag(nil as SkillCategory?)
                     ForEach(SkillCategory.allCases) { category in
@@ -215,22 +263,29 @@ struct SkillLibraryView: View {
                             .tag(Optional(category))
                     }
                 }
-                .frame(width: 160)
+                .frame(width: 156)
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(SkillLibraryFilter.allCases) { filter in
-                            Button(L10n.string(filter.localizationKey, locale: languageSettings.locale)) {
-                                store.selectedFilter = filter
-                                selectedSection = section(for: filter)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(store.selectedFilter == filter ? .black : .gray.opacity(0.2))
-                            .foregroundStyle(store.selectedFilter == filter ? .white : .primary)
-                            .clipShape(Capsule())
-                        }
+                Picker(L10n.string("Sort", locale: languageSettings.locale), selection: $store.sortMode) {
+                    ForEach(SkillSortMode.allCases) { mode in
+                        Text(L10n.string(mode.localizationKey, locale: languageSettings.locale)).tag(mode)
                     }
                 }
+                .labelsHidden()
+                .frame(width: 112)
+
+                Picker(filterPickerTitle, selection: Binding(
+                    get: { store.selectedFilter },
+                    set: { filter in
+                        store.selectedFilter = filter
+                        selectedSection = section(for: filter)
+                    }
+                )) {
+                    ForEach(SkillLibraryFilter.allCases) { filter in
+                        Text(L10n.string(filter.localizationKey, locale: languageSettings.locale)).tag(filter)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 112)
             }
         }
     }
@@ -290,6 +345,81 @@ struct SkillLibraryView: View {
                     .lineLimit(2)
             }
         }
+        .padding(12)
+        .background(SkillManagerTheme.accentSoft, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous)
+                .stroke(SkillManagerTheme.accent.opacity(0.16))
+        }
+    }
+
+    private var sidebarHeader: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "sparkle.magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(SkillManagerTheme.accent, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Skill Manager")
+                    .font(.system(.body, design: .rounded, weight: .semibold))
+                Text(libraryInventoryText)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+    }
+
+    private func contentHeader(count: Int) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(selectedSection.title(locale: languageSettings.locale))
+                .font(.system(.title2, design: .rounded, weight: .semibold))
+            Text("\(count)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.tertiary)
+                .contentTransition(.numericText())
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+    }
+
+    private var libraryInventoryText: String {
+        if languageSettings.locale.identifier.lowercased().hasPrefix("zh") {
+            return "\(store.standaloneSkills.count) 个技能 · \(store.pluginPackages.count) 个插件"
+        }
+        return "\(store.standaloneSkills.count) skills · \(store.pluginPackages.count) plugins"
+    }
+
+    private func sidebarCount(for section: LibrarySection) -> Int? {
+        switch section {
+        case .library: store.standaloneSkills.count
+        case .recommendations: store.skillRecommendations.count
+        case .plugins: store.pluginPackages.count
+        case .favorites: store.favoriteSkillIDs.count
+        case .recents: store.recentSkillIDs.count
+        case .settings: nil
+        }
+    }
+
+    private var detailIdentity: String {
+        if selectedSection == .settings {
+            return "settings"
+        }
+        if selectedSection == .plugins {
+            return "plugin:\(selectedPlugin?.id ?? "none")"
+        }
+        return "skill:\(selectedDisplayedSkill?.id ?? "none")"
+    }
+
+    private var interfaceAnimation: Animation? {
+        reduceMotion ? nil : SkillManagerTheme.responsiveSpring
     }
 
     private func applySection(_ section: LibrarySection) {
@@ -372,6 +502,10 @@ struct SkillLibraryView: View {
 
     private var allCategoriesTitle: String {
         languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "全部分类" : "All Categories"
+    }
+
+    private var filterPickerTitle: String {
+        languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "筛选" : "Filter"
     }
 
     private func keepSkillSelectionInsideDisplayedSkills() {

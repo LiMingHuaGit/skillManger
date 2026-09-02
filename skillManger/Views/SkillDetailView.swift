@@ -10,6 +10,7 @@ import SwiftUI
 
 struct SkillDetailView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var store: SkillLibraryStore
     let skill: Skill?
 
@@ -27,10 +28,12 @@ struct SkillDetailView: View {
                         duplicatePanel(for: skill)
                         excerptPanel(for: skill)
                     }
-                    .padding(24)
+                    .padding(28)
+                    .frame(maxWidth: 920, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
                 }
+                .background(SkillManagerTheme.canvas)
                 .navigationTitle(skill.name)
                 .onAppear {
                     selectedTemplateID = store.defaultTemplateID
@@ -43,35 +46,48 @@ struct SkillDetailView: View {
 
     private func header(for skill: Skill) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "text.book.closed.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(SkillManagerTheme.accent)
+                    .frame(width: 44, height: 44)
+                    .background(SkillManagerTheme.accentSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text(skill.name)
-                        .font(.largeTitle.weight(.semibold))
+                        .font(.system(.title, design: .rounded, weight: .bold))
                     Text(skill.description)
-                        .font(.title3)
+                        .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .lineSpacing(2)
                 }
                 Spacer()
                 Button {
                     store.toggleFavorite(skillID: skill.id)
                 } label: {
-                    Label(store.favoriteSkillIDs.contains(skill.id) ? L10n.string("Favorited", locale: locale) : L10n.string("Favorite", locale: locale), systemImage: store.favoriteSkillIDs.contains(skill.id) ? "star.fill" : "star")
+                    Image(systemName: store.favoriteSkillIDs.contains(skill.id) ? "star.fill" : "star")
+                        .foregroundStyle(store.favoriteSkillIDs.contains(skill.id) ? Color.yellow : Color.secondary)
+                        .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.bordered)
+                .help(store.favoriteSkillIDs.contains(skill.id) ? L10n.string("Favorited", locale: locale) : L10n.string("Favorite", locale: locale))
+                .animation(reduceMotion ? nil : SkillManagerTheme.responsiveSpring, value: store.favoriteSkillIDs.contains(skill.id))
             }
 
-            HStack(spacing: 8) {
-                SourceBadge(sourceType: skill.sourceType)
-                OriginBadge(origin: skill.origin)
-                CategoryBadge(category: skill.category)
-                HealthBadge(status: skill.healthStatus)
-                ForEach(skill.tags.prefix(4), id: \.self) { tag in
-                    Text(tag)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.quaternary.opacity(0.45), in: Capsule())
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 7) {
+                    SourceBadge(sourceType: skill.sourceType)
+                    OriginBadge(origin: skill.origin)
+                    CategoryBadge(category: skill.category)
+                    HealthBadge(status: skill.healthStatus)
+                    ForEach(skill.tags.prefix(4), id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(SkillManagerTheme.quietFill, in: Capsule())
+                    }
                 }
             }
         }
@@ -79,15 +95,21 @@ struct SkillDetailView: View {
 
     private func copyPanel(for skill: Skill) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Chat handoff")
-                .font(.headline)
+            PanelSectionTitle(title: "Chat handoff", systemImage: "bubble.left.and.text.bubble.right")
 
-            Picker("Platform", selection: $selectedTemplateID) {
-                ForEach(store.templates) { template in
-                    Text("\(template.platformName) - \(template.templateType)").tag(template.id)
+            HStack(spacing: 12) {
+                Text("Platform")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 72, alignment: .leading)
+                Picker("Platform", selection: $selectedTemplateID) {
+                    ForEach(store.templates) { template in
+                        Text("\(template.platformName) - \(template.templateType)").tag(template.id)
+                    }
                 }
+                .labelsHidden()
+                .frame(maxWidth: 320)
             }
-            .pickerStyle(.menu)
 
             if selectedTemplate?.body.contains("$use_case") == true {
                 TextField("Use case for Codex instruction", text: $useCase)
@@ -99,7 +121,11 @@ struct SkillDetailView: View {
                 .textSelection(.enabled)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                .background(SkillManagerTheme.surface, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous)
+                        .stroke(SkillManagerTheme.subtleBorder)
+                }
 
             HStack {
                 Button {
@@ -108,7 +134,7 @@ struct SkillDetailView: View {
                     Label("Copy prompt", systemImage: "doc.on.doc")
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.black)
+                .tint(SkillManagerTheme.accent)
 
                 Button {
                     copyToPasteboard(skill.referencePath)
@@ -119,26 +145,30 @@ struct SkillDetailView: View {
                 .buttonStyle(.bordered)
 
                 if let toast = store.toastMessage {
-                    Text(toast)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Label(toast, systemImage: "checkmark.circle.fill")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(SkillManagerTheme.accent)
                         .transition(.opacity)
                 }
             }
         }
         .padding(16)
-        .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+        .panelSurface(emphasized: true)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: store.toastMessage)
     }
 
     private func metadataPanel(for skill: Skill) -> some View {
-        Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
-            GridRow { Text("Source").foregroundStyle(.secondary); Text(L10n.string(skill.sourceType.localizationKey, locale: locale)) }
-            GridRow { Text("Path").foregroundStyle(.secondary); Text(skill.sourcePath).font(.system(.body, design: .monospaced)).textSelection(.enabled) }
-            GridRow { Text("Indexed").foregroundStyle(.secondary); Text(skill.lastIndexedAt, style: .relative) }
-            GridRow { Text("Modified").foregroundStyle(.secondary); Text(skill.lastModifiedAt, style: .date) }
+        VStack(alignment: .leading, spacing: 12) {
+            PanelSectionTitle(title: "Details", systemImage: "info.circle")
+            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
+                GridRow { Text("Source").foregroundStyle(.secondary); Text(L10n.string(skill.sourceType.localizationKey, locale: locale)) }
+                GridRow { Text("Path").foregroundStyle(.secondary); Text(skill.sourcePath).font(.system(.callout, design: .monospaced)).textSelection(.enabled) }
+                GridRow { Text("Indexed").foregroundStyle(.secondary); Text(skill.lastIndexedAt, style: .relative) }
+                GridRow { Text("Modified").foregroundStyle(.secondary); Text(skill.lastModifiedAt, style: .date) }
+            }
+            .font(.callout)
         }
-        .font(.callout)
+        .padding(.horizontal, 2)
     }
 
     @ViewBuilder
@@ -147,8 +177,7 @@ struct SkillDetailView: View {
         if duplicates.isEmpty == false {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Duplicate skills")
-                        .font(.headline)
+                    PanelSectionTitle(title: "Duplicate skills", systemImage: "square.on.square")
                     Spacer()
                     Button {
                         copyDuplicateReport(for: skill, duplicates: duplicates)
@@ -203,24 +232,27 @@ struct SkillDetailView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                .background(SkillManagerTheme.surface, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
             }
             .padding(16)
-            .background(Color(NSColor.textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+            .panelSurface(emphasized: true)
         }
     }
 
     private func excerptPanel(for skill: Skill) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("SKILL.md preview")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 10) {
+            PanelSectionTitle(title: "SKILL.md preview", systemImage: "doc.plaintext")
             Text(skill.excerpt.isEmpty ? L10n.string("No preview available.", locale: locale) : skill.excerpt)
-                .font(.system(.body, design: .monospaced))
+                .font(.system(.callout, design: .monospaced))
                 .textSelection(.enabled)
-                .padding(12)
+                .lineSpacing(3)
+                .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                .background(SkillManagerTheme.surface, in: RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: SkillManagerTheme.controlRadius, style: .continuous)
+                        .stroke(SkillManagerTheme.subtleBorder)
+                }
         }
     }
 
