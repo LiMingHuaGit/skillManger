@@ -47,6 +47,7 @@ final class SkillNotchState: ObservableObject {
 @MainActor
 final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     static let shared = SkillNotchPanelController(appState: .shared)
+    private static let libraryWindowAutosaveName = "SkillManager.LibraryWindow"
 
     private let appState: SkillManagerAppState
     private let notchState = SkillNotchState()
@@ -161,7 +162,10 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
                     launchAtLoginSettings: appState.launchAtLoginSettings
                 )
             )
-            window.center()
+            if window.setFrameUsingName(Self.libraryWindowAutosaveName) == false {
+                window.center()
+            }
+            window.setFrameAutosaveName(Self.libraryWindowAutosaveName)
             libraryWindowController = NSWindowController(window: window)
         }
 
@@ -175,7 +179,6 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         guard let closingWindow = notification.object as? NSWindow,
               closingWindow === libraryWindowController?.window else { return }
 
-        libraryWindowController = nil
         NSApp.setActivationPolicy(.accessory)
     }
 

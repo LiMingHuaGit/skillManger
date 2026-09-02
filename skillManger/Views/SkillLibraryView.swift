@@ -5,6 +5,7 @@
 //  Created by Codex on 2026/7/14.
 //
 
+import AppKit
 import SwiftUI
 import OSLog
 
@@ -97,6 +98,7 @@ struct SkillLibraryView: View {
             PerformanceDiagnostics.library.info("skill_selection_changed has_selection=\(newValue != nil) skills=\(store.skills.count)")
             logNextMainQueueTurn(operation: "skill_selection_settled", startedAt: startedAt, details: "has_selection=\(newValue != nil)")
         }
+        .background(LibrarySplitViewAutosaveBridge())
     }
 
     private var skillList: some View {
@@ -408,6 +410,51 @@ struct SkillLibraryView: View {
                 details: details,
                 slowThresholdMS: 32
             )
+        }
+    }
+}
+
+private struct LibrarySplitViewAutosaveBridge: NSViewRepresentable {
+    func makeNSView(context: Context) -> LibrarySplitViewAutosaveView {
+        LibrarySplitViewAutosaveView()
+    }
+
+    func updateNSView(_ nsView: LibrarySplitViewAutosaveView, context: Context) {
+        nsView.configureSplitViews()
+    }
+}
+
+private final class LibrarySplitViewAutosaveView: NSView {
+    private static let autosaveName = "SkillManager.LibrarySplitView"
+    private var isConfigured = false
+    private var isConfigurationScheduled = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        configureSplitViews()
+    }
+
+    func configureSplitViews() {
+        guard isConfigured == false, isConfigurationScheduled == false else { return }
+        isConfigurationScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            isConfigurationScheduled = false
+            guard let contentView = window?.contentView else { return }
+            let splitViews = Self.findSplitViews(in: contentView)
+            for (index, splitView) in splitViews.enumerated() where splitView.autosaveName == nil {
+                splitView.autosaveName = "\(Self.autosaveName).\(index)"
+            }
+            isConfigured = splitViews.isEmpty == false
+        }
+    }
+
+    private static func findSplitViews(in view: NSView) -> [NSSplitView] {
+        view.subviews.reduce(into: []) { result, subview in
+            if let splitView = subview as? NSSplitView {
+                result.append(splitView)
+            }
+            result.append(contentsOf: findSplitViews(in: subview))
         }
     }
 }
