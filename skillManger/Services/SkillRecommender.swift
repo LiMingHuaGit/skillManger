@@ -8,11 +8,15 @@
 import Foundation
 
 struct SkillRecommender {
+    private static let maximumWeightedTerms = 64
+    private static let maximumTokensPerText = 256
+
     func recommendations(for context: CodexSessionContext, skills: [Skill], limit: Int = 12) -> [SkillRecommendation] {
+        let startedAt = PerformanceDiagnostics.start()
         let weightedTerms = Self.weightedTerms(for: context)
         guard weightedTerms.isEmpty == false else { return [] }
 
-        return skills.compactMap { skill in
+        let results: [SkillRecommendation] = skills.compactMap { skill in
             let score = score(skill: skill, weightedTerms: weightedTerms)
             guard score.value >= 4 else { return nil }
             return SkillRecommendation(skill: skill, score: score.value, matchedTerms: score.matches)
@@ -25,12 +29,21 @@ struct SkillRecommender {
         }
         .prefix(limit)
         .map { $0 }
+        PerformanceDiagnostics.finish(
+            "recommendation_scoring",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.recommendations,
+            itemCount: results.count,
+            details: "skills=\(skills.count) terms=\(weightedTerms.count)",
+            slowThresholdMS: 20
+        )
+        return results
     }
 
     private func score(skill: Skill, weightedTerms: [String: Double]) -> (value: Double, matches: [String]) {
         let name = skill.name.lowercased()
         let description = skill.description.lowercased()
-        let tags = skill.tags.map { $0.lowercased() }
+        let tags = skill.tags.joined(separator: " ").lowercased()
         let sourcePath = skill.sourcePath.lowercased()
         let pluginURI = skill.pluginURI?.lowercased() ?? ""
 
@@ -46,7 +59,7 @@ struct SkillRecommender {
                 termScore += 12
             }
 
-            if tags.contains(term) || tags.contains(where: { $0.contains(term) }) {
+            if tags.contains(term) {
                 termScore += 8
             }
 
@@ -71,17 +84,25 @@ struct SkillRecommender {
 
     private static func weightedTerms(for context: CodexSessionContext) -> [String: Double] {
         var terms: [String: Double] = [:]
-        addTokens(from: context.title, weight: 3.0, to: &terms)
-        addTokens(from: context.preview, weight: 2.0, to: &terms)
-        addTokens(from: context.cwd, weight: 1.4, to: &terms)
+        addTokens(from: context.title, weight: 3.0, characterLimit: 160, to: &terms)
+        addTokens(from: context.preview, weight: 2.0, characterLimit: 400, to: &terms)
+        addTokens(from: context.cwd, weight: 1.4, characterLimit: 300, to: &terms)
         for message in context.recentUserMessages {
-            addTokens(from: message, weight: 1.0, to: &terms)
+            addTokens(from: message, weight: 1.0, characterLimit: 600, to: &terms)
         }
-        return terms
+
+        return Dictionary(uniqueKeysWithValues: terms
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                if lhs.key.count != rhs.key.count { return lhs.key.count > rhs.key.count }
+                return lhs.key < rhs.key
+            }
+            .prefix(maximumWeightedTerms)
+            .map { ($0.key, $0.value) })
     }
 
-    private static func addTokens(from text: String, weight: Double, to terms: inout [String: Double]) {
-        for token in tokenize(text) {
+    private static func addTokens(from text: String, weight: Double, characterLimit: Int, to terms: inout [String: Double]) {
+        for token in tokenize(String(text.prefix(characterLimit))) {
             terms[token, default: 0] += weight
         }
     }
@@ -125,7 +146,8 @@ struct SkillRecommender {
         }
         flush()
 
-        return Array(Set(tokens))
+        var seen = Set<String>()
+        return tokens.filter { seen.insert($0).inserted }.prefix(maximumTokensPerText).map { $0 }
     }
 
     private static func cjkTokens(_ text: String) -> [String] {
@@ -162,4 +184,3 @@ struct SkillRecommender {
         "帮我", "当前", "这个", "一个", "可以", "是否", "进行", "使用", "用户", "项目", "文件", "代码", "实现", "查看", "分析", "修改", "功能", "需要"
     ]
 }
-

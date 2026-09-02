@@ -334,6 +334,14 @@ struct SkillManagerDomainTests {
         #expect(recommendations.first?.matchedTerms.contains("window") == true)
     }
 
+    @Test func recommenderBoundsTokensForLongCJKContext() {
+        let longContext = String(repeating: "完整库切换查看技能推荐性能优化", count: 100)
+
+        let tokens = SkillRecommender.tokenize(longContext)
+
+        #expect(tokens.count <= 256)
+    }
+
     @Test func codexSessionReaderLoadsLatestSessionIndexEntries() throws {
         let codexHome = try TemporarySkillRoot()
         let codexDirectory = codexHome.url.appendingPathComponent(".codex", isDirectory: true)

@@ -25,8 +25,6 @@ final class SkillManagerAppState: ObservableObject {
     func refreshIfNeeded() {
         if store.skills.isEmpty {
             try? store.refresh()
-        } else {
-            store.refreshRecommendations()
         }
     }
 }

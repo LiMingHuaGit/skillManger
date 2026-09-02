@@ -118,6 +118,20 @@ enum SkillCategory: String, CaseIterable, Identifiable {
 }
 
 enum SkillClassifier {
+    private final class CachedCategory: NSObject {
+        let value: SkillCategory
+
+        init(_ value: SkillCategory) {
+            self.value = value
+        }
+    }
+
+    private static let categoryCache: NSCache<NSString, CachedCategory> = {
+        let cache = NSCache<NSString, CachedCategory>()
+        cache.countLimit = 4_096
+        return cache
+    }()
+
     static func origin(for skill: Skill) -> SkillOrigin {
         let path = skill.sourcePath.lowercased()
         let officialPathMarkers = [
@@ -134,6 +148,11 @@ enum SkillClassifier {
     }
 
     static func category(for skill: Skill) -> SkillCategory {
+        let cacheKey = "\(skill.id)|\(skill.lastModifiedAt.timeIntervalSinceReferenceDate)" as NSString
+        if let cached = categoryCache.object(forKey: cacheKey) {
+            return cached.value
+        }
+
         let text = normalizedText(
             ([skill.name, skill.description, skill.excerpt] + skill.tags)
                 .joined(separator: " ")
@@ -144,8 +163,10 @@ enum SkillClassifier {
             (category, score(for: category, text: text, tokens: tokens))
         }
         guard let best = scores.max(by: { lhs, rhs in lhs.1 < rhs.1 }), best.1 > 0 else {
+            categoryCache.setObject(CachedCategory(.other), forKey: cacheKey)
             return .other
         }
+        categoryCache.setObject(CachedCategory(best.0), forKey: cacheKey)
         return best.0
     }
 

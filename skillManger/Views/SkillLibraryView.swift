@@ -135,7 +135,7 @@ struct SkillLibraryView: View {
         }
         .navigationTitle(selectedSection.title(locale: languageSettings.locale))
         .onAppear(perform: keepSkillSelectionInsideDisplayedSkills)
-        .onChange(of: displayedSkills) { _, _ in
+        .onChange(of: displayedSkills.map(\.id)) { _, _ in
             keepSkillSelectionInsideDisplayedSkills()
         }
     }
@@ -299,9 +299,7 @@ struct SkillLibraryView: View {
     private func applySection(_ section: LibrarySection) {
         switch section {
         case .library: store.selectedFilter = .all
-        case .recommendations:
-            store.selectedFilter = .recommended
-            store.refreshRecommendations()
+        case .recommendations: store.selectedFilter = .recommended
         case .standaloneSkills: store.selectedFilter = .all
         case .plugins: store.selectedFilter = .all
         case .pluginSkills: store.selectedFilter = .plugin

@@ -103,12 +103,7 @@ final class SkillLibraryStore: ObservableObject {
     @Published var lastCopiedText: String?
     @Published var toastMessage: String?
     @Published var codexSessions: [CodexSessionContext] = []
-    @Published var selectedCodexSessionID: CodexSessionContext.ID? {
-        didSet {
-            guard selectedCodexSessionID != oldValue else { return }
-            updateSkillRecommendations()
-        }
-    }
+    @Published var selectedCodexSessionID: CodexSessionContext.ID?
     @Published var skillRecommendations: [SkillRecommendation] = []
     @Published var recommendationError: String?
 
@@ -352,7 +347,7 @@ final class SkillLibraryStore: ObservableObject {
         PerformanceDiagnostics.indexing.info("refresh_started roots=\(enabledRoots.count) existing_skills=\(self.skills.count)")
         skills = try indexer.index(rootURLs: enabledRoots)
         selectedSkillID = selectedSkillID ?? skills.first?.id
-        refreshRecommendations()
+        skillRecommendations = []
         PerformanceDiagnostics.finish(
             "library_refresh",
             startedAt: startedAt,
@@ -371,9 +366,8 @@ final class SkillLibraryStore: ObservableObject {
             codexSessions = sessions
             if selectedCodexSessionID == nil || sessions.contains(where: { $0.id == selectedCodexSessionID }) == false {
                 selectedCodexSessionID = sessions.first?.id
-            } else {
-                updateSkillRecommendations()
             }
+            updateSkillRecommendations()
             recommendationError = nil
             PerformanceDiagnostics.finish(
                 "recommendation_refresh",

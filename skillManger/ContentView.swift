@@ -26,9 +26,6 @@ struct ContentView: View {
         SkillLibraryView(store: store, languageSettings: languageSettings, launchAtLoginSettings: launchAtLoginSettings)
             .environment(\.locale, languageSettings.locale)
             .frame(minWidth: 1120, minHeight: 720)
-            .task {
-                try? store.refresh()
-            }
     }
 }
 
