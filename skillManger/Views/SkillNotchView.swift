@@ -214,18 +214,20 @@ struct SkillNotchView: View {
             .lineLimit(1)
             .frame(maxWidth: 440, alignment: .leading)
         } else {
-            Text(
-                L10n.format(
-                    "%d skills, %d plugin skills",
-                    locale: locale,
-                    store.standaloneSkills.count,
-                    store.pluginSkills.count
-                )
-            )
+            Text(librarySummary)
             .font(.caption)
             .foregroundStyle(.white.opacity(0.52))
             .lineLimit(1)
         }
+    }
+
+    private var librarySummary: String {
+        let skillCount = store.standaloneSkills.count
+        let pluginCount = store.pluginPackages.count
+        if locale.identifier.lowercased().hasPrefix("zh") {
+            return "\(skillCount) 个技能，\(pluginCount) 个插件"
+        }
+        return "\(skillCount) skills, \(pluginCount) plugins"
     }
 
     private var filteredSkills: [Skill] {

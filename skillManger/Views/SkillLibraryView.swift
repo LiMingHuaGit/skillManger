@@ -11,9 +11,7 @@ import OSLog
 enum LibrarySection: String, CaseIterable, Identifiable {
     case library
     case recommendations
-    case standaloneSkills
     case plugins
-    case pluginSkills
     case favorites
     case recents
     case settings
@@ -24,9 +22,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
         switch self {
         case .library: L10n.string("Library", locale: locale)
         case .recommendations: L10n.string("Recommended", locale: locale)
-        case .standaloneSkills: L10n.string("Standalone Skills", locale: locale)
         case .plugins: L10n.string("Plugins", locale: locale)
-        case .pluginSkills: L10n.string("Plugin Skills", locale: locale)
         case .favorites: L10n.string("Favorites", locale: locale)
         case .recents: L10n.string("Recents", locale: locale)
         case .settings: L10n.string("Settings", locale: locale)
@@ -37,9 +33,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
         switch self {
         case .library: "books.vertical"
         case .recommendations: "sparkles"
-        case .standaloneSkills: "text.book.closed"
         case .plugins: "puzzlepiece.extension"
-        case .pluginSkills: "square.stack.3d.up"
         case .favorites: "star"
         case .recents: "clock.arrow.circlepath"
         case .settings: "gearshape"
@@ -300,9 +294,7 @@ struct SkillLibraryView: View {
         switch section {
         case .library: store.selectedFilter = .all
         case .recommendations: store.selectedFilter = .recommended
-        case .standaloneSkills: store.selectedFilter = .all
         case .plugins: store.selectedFilter = .all
-        case .pluginSkills: store.selectedFilter = .plugin
         case .favorites: store.selectedFilter = .favorites
         case .recents: store.selectedFilter = .recent
         case .settings: break
@@ -314,7 +306,6 @@ struct SkillLibraryView: View {
         case .recommended: .recommendations
         case .favorites: .favorites
         case .recent: .recents
-        case .plugin: .pluginSkills
         default: .library
         }
     }
@@ -336,10 +327,6 @@ struct SkillLibraryView: View {
         let result: [Skill] = switch selectedSection {
         case .recommendations:
             filtered(store.recommendationRankedSkills)
-        case .standaloneSkills:
-            filtered(store.standaloneSkills)
-        case .pluginSkills:
-            filtered(store.pluginSkills)
         default:
             store.visibleSkills
         }

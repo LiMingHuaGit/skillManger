@@ -121,7 +121,7 @@ struct SkillManagerDomainTests {
             initialSkills: [
                 .fixture(name: "design-system", description: "Design UI components.", sourceType: .local),
                 .fixture(name: "swift-debugger", description: "Debug Swift code.", sourceType: .plugin),
-                .fixture(name: "computer-use", description: "Control browser and desktop software.", sourceType: .plugin)
+                .fixture(name: "computer-use", description: "Control browser and desktop software.", sourceType: .local)
             ]
         )
 
@@ -164,13 +164,12 @@ struct SkillManagerDomainTests {
 
         store.searchText = ""
         store.selectedFilter = .favorites
-        #expect(store.visibleSkills.map(\.name) == ["swiftui-ui-patterns"])
+        #expect(store.visibleSkills.isEmpty)
 
         store.selectedFilter = .recent
         #expect(store.visibleSkills.map(\.name) == ["local-dependency-manager"])
 
         store.selectedFilter = .all
-        store.showPluginSkills = false
         #expect(store.visibleSkills.map(\.name) == ["local-dependency-manager"])
 
         #expect(preferences.favoriteSkillIDs == ["swiftui-ui-patterns"])
@@ -178,7 +177,7 @@ struct SkillManagerDomainTests {
     }
 
     @Test func storeRecommendedFilterSearchesAllSkillsWithRecommendationsFirst() throws {
-        let recommended = Skill.fixture(name: "window-management", description: "Position macOS panels.", sourceType: .plugin)
+        let recommended = Skill.fixture(name: "window-management", description: "Position macOS panels.", sourceType: .local)
         let localMatch = Skill.fixture(name: "local-dependency-manager", description: "Use local shell tools.", sourceType: .local)
         let pluginMatch = Skill.fixture(name: "shell-debugger", description: "Debug shell failures.", sourceType: .plugin)
         let store = SkillLibraryStore(
@@ -187,31 +186,32 @@ struct SkillManagerDomainTests {
         )
 
         store.skillRecommendations = [
-            SkillRecommendation(skill: recommended, score: 18, matchedTerms: ["window"])
+            SkillRecommendation(skill: recommended, score: 18, matchedTerms: ["window"]),
+            SkillRecommendation(skill: pluginMatch, score: 16, matchedTerms: ["shell"])
         ]
         store.selectedFilter = .recommended
 
-        #expect(store.visibleSkills.map(\.name) == ["window-management", "local-dependency-manager", "shell-debugger"])
+        #expect(store.visibleSkills.map(\.name) == ["window-management", "local-dependency-manager"])
 
         store.searchText = "shell"
 
-        #expect(store.visibleSkills.map(\.name) == ["local-dependency-manager", "shell-debugger"])
+        #expect(store.visibleSkills.map(\.name) == ["local-dependency-manager"])
     }
 
     @Test func storeReportsDuplicateSkillsForDetailResolution() throws {
         let store = SkillLibraryStore(
             preferences: InMemorySkillPreferences(),
             initialSkills: [
-                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/appkit-interop/SKILL.md"),
-                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit narrowly.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-api-curated/build-macos-apps/appkit-interop/SKILL.md"),
-                .fixture(name: "swiftui-patterns", description: "Build SwiftUI views.", sourceType: .plugin)
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .local, sourcePath: "/Users/ming/.codex/skills/appkit-interop/SKILL.md"),
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit narrowly.", sourceType: .project, sourcePath: "/Users/ming/project/.agents/skills/appkit-interop/SKILL.md"),
+                .fixture(name: "appkit-interop", description: "Plugin implementation.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/appkit-interop/SKILL.md")
             ]
         )
 
-        let selected = try #require(store.skills.first { $0.name == "appkit-interop" })
+        let selected = try #require(store.skills.first { $0.sourceType == .local })
         let duplicates = store.duplicateSkills(for: selected)
 
-        #expect(duplicates.map(\.sourcePath) == ["/Users/ming/.codex/plugins/cache/openai-api-curated/build-macos-apps/appkit-interop/SKILL.md"])
+        #expect(duplicates.map(\.sourcePath) == ["/Users/ming/project/.agents/skills/appkit-interop/SKILL.md"])
     }
 
     @Test func storeSeparatesStandaloneSkillsPluginsAndPluginSkills() throws {
@@ -227,6 +227,7 @@ struct SkillManagerDomainTests {
 
         #expect(store.standaloneSkills.map(\.name) == ["local-dependency-manager"])
         #expect(store.pluginSkills.map(\.name) == ["appkit-interop", "audit", "swiftui-patterns"])
+        #expect(store.visibleSkills.map(\.name) == ["local-dependency-manager"])
         #expect(store.pluginPackages.map(\.id) == ["build-macos-apps@openai-curated", "product-design@role-specific-plugins"])
         #expect(store.pluginPackages.first { $0.id == "build-macos-apps@openai-curated" }?.skillCount == 2)
         #expect(store.skills(forPluginID: "build-macos-apps@openai-curated").map(\.name) == ["appkit-interop", "swiftui-patterns"])

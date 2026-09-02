@@ -98,7 +98,6 @@ enum SkillLibraryFilter: String, CaseIterable, Identifiable {
     case favorites
     case recent
     case local
-    case plugin
     case needsReview
 
     var id: String { rawValue }
@@ -110,7 +109,6 @@ enum SkillLibraryFilter: String, CaseIterable, Identifiable {
         case .favorites: "Favorites"
         case .recent: "Recent"
         case .local: "Local"
-        case .plugin: "Plugin"
         case .needsReview: "Needs Review"
         }
     }

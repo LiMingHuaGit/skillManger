@@ -101,16 +101,10 @@ struct SettingsView: View {
                 .tint(.black)
             }
 
-            HStack(spacing: 24) {
-                Toggle("Show system skills", isOn: Binding(
-                    get: { store.showSystemSkills },
-                    set: { store.showSystemSkills = $0 }
-                ))
-                Toggle("Show plugin skills", isOn: Binding(
-                    get: { store.showPluginSkills },
-                    set: { store.showPluginSkills = $0 }
-                ))
-            }
+            Toggle("Show system skills", isOn: Binding(
+                get: { store.showSystemSkills },
+                set: { store.showSystemSkills = $0 }
+            ))
 
             ForEach($store.roots) { $root in
                 HStack(alignment: .firstTextBaseline) {

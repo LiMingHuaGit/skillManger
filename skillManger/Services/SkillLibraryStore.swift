@@ -16,7 +16,6 @@ protocol SkillPreferencesStoring: AnyObject {
     var roots: [SkillRoot] { get set }
     var defaultTemplateID: String { get set }
     var showSystemSkills: Bool { get set }
-    var showPluginSkills: Bool { get set }
 }
 
 final class InMemorySkillPreferences: SkillPreferencesStoring {
@@ -26,7 +25,6 @@ final class InMemorySkillPreferences: SkillPreferencesStoring {
     var roots: [SkillRoot] = []
     var defaultTemplateID: String = PlatformTemplate.codexLocalSkill.id
     var showSystemSkills: Bool = true
-    var showPluginSkills: Bool = true
 }
 
 final class UserDefaultsSkillPreferences: SkillPreferencesStoring {
@@ -66,11 +64,6 @@ final class UserDefaultsSkillPreferences: SkillPreferencesStoring {
     var showSystemSkills: Bool {
         get { defaults.object(forKey: "showSystemSkills") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "showSystemSkills") }
-    }
-
-    var showPluginSkills: Bool {
-        get { defaults.object(forKey: "showPluginSkills") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "showPluginSkills") }
     }
 
     private func encode<T: Encodable>(_ value: T, key: String) {
@@ -157,15 +150,6 @@ final class SkillLibraryStore: ObservableObject {
         }
     }
 
-    var showPluginSkills: Bool {
-        get { preferences.showPluginSkills }
-        set {
-            objectWillChange.send()
-            preferences.showPluginSkills = newValue
-            updateSkillRecommendations()
-        }
-    }
-
     var selectedSkill: Skill? {
         guard let selectedSkillID else { return visibleSkills.first }
         return skills.first { $0.id == selectedSkillID } ?? visibleSkills.first
@@ -202,8 +186,6 @@ final class SkillLibraryStore: ObservableObject {
             candidates = candidates.filter { recent.contains($0.id) }
         case .local:
             candidates = candidates.filter { $0.sourceType == .local }
-        case .plugin:
-            candidates = candidates.filter { $0.sourceType == .plugin }
         case .needsReview:
             candidates = candidates.filter(\.isNeedsReview)
         }
@@ -323,7 +305,8 @@ final class SkillLibraryStore: ObservableObject {
 
     func duplicateSkills(for skill: Skill) -> [Skill] {
         let startedAt = PerformanceDiagnostics.start()
-        let result = skills
+        let candidates = skills.filter { $0.sourceType != .plugin }
+        let result = candidates
             .filter { candidate in
                 candidate.name.caseInsensitiveCompare(skill.name) == .orderedSame && candidate.sourcePath != skill.sourcePath
             }
@@ -335,7 +318,7 @@ final class SkillLibraryStore: ObservableObject {
             startedAt: startedAt,
             logger: PerformanceDiagnostics.library,
             itemCount: result.count,
-            details: "source=\(skills.count)",
+            details: "source=\(candidates.count)",
             slowThresholdMS: 8
         )
         return result
@@ -415,12 +398,9 @@ final class SkillLibraryStore: ObservableObject {
             return
         }
 
-        var candidates = skills
+        var candidates = skills.filter { $0.sourceType != .plugin }
         if showSystemSkills == false {
             candidates = candidates.filter { $0.sourceType != .system }
-        }
-        if showPluginSkills == false {
-            candidates = candidates.filter { $0.sourceType != .plugin }
         }
 
         skillRecommendations = recommender.recommendations(for: selectedCodexSession, skills: candidates)
@@ -435,14 +415,10 @@ final class SkillLibraryStore: ObservableObject {
     }
 
     private var visibleSkillCandidates: [Skill] {
-        var candidates = skills
+        var candidates = skills.filter { $0.sourceType != .plugin }
 
         if showSystemSkills == false {
             candidates = candidates.filter { $0.sourceType != .system }
-        }
-
-        if showPluginSkills == false {
-            candidates = candidates.filter { $0.sourceType != .plugin }
         }
 
         return candidates
