@@ -42,6 +42,36 @@ struct HealthBadge: View {
     }
 }
 
+struct OriginBadge: View {
+    @Environment(\.locale) private var locale
+    let origin: SkillOrigin
+
+    var body: some View {
+        Label(origin.title(locale: locale), systemImage: origin.systemImage)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(origin == .official ? Color.blue : Color.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background((origin == .official ? Color.blue : Color.secondary).opacity(0.10), in: Capsule())
+            .help(origin.title(locale: locale))
+    }
+}
+
+struct CategoryBadge: View {
+    @Environment(\.locale) private var locale
+    let category: SkillCategory
+
+    var body: some View {
+        Label(category.title(locale: locale), systemImage: category.systemImage)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.quaternary.opacity(0.45), in: Capsule())
+            .help(category.title(locale: locale))
+    }
+}
+
 struct EmptyStateView: View {
     let title: String
     let message: String
@@ -79,6 +109,8 @@ struct SkillRowView: View {
 
             HStack {
                 HealthBadge(status: skill.healthStatus)
+                OriginBadge(origin: skill.origin)
+                CategoryBadge(category: skill.category)
                 Spacer()
                 Text(skill.sourcePath)
                     .font(.caption.monospaced())
@@ -121,6 +153,8 @@ struct RecommendedSkillRowView: View {
                 .lineLimit(2)
 
             HStack(spacing: 6) {
+                OriginBadge(origin: recommendation.skill.origin)
+                CategoryBadge(category: recommendation.skill.category)
                 Text(L10n.string("Matched", locale: locale))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)

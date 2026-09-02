@@ -95,6 +95,7 @@ final class SkillLibraryStore: ObservableObject {
         didSet { preferences.roots = roots }
     }
     @Published var searchText: String = ""
+    @Published var selectedCategory: SkillCategory?
     @Published var selectedFilter: SkillLibraryFilter = .all
     @Published var sortMode: SkillSortMode = .relevance
     @Published var selectedSkillID: Skill.ID?
@@ -213,9 +214,13 @@ final class SkillLibraryStore: ObservableObject {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if query.isEmpty == false {
             candidates = candidates.filter { skill in
-                ([skill.name, skill.description, skill.sourcePath] + skill.tags)
+                ([skill.name, skill.description, skill.sourcePath] + skill.tags + SkillClassifier.searchTerms(for: skill))
                     .contains { $0.lowercased().contains(query) }
             }
+        }
+
+        if let selectedCategory {
+            candidates = candidates.filter { $0.category == selectedCategory }
         }
 
         if selectedFilter == .recommended {
@@ -311,6 +316,17 @@ final class SkillLibraryStore: ObservableObject {
 
     func recommendation(for skillID: Skill.ID) -> SkillRecommendation? {
         skillRecommendations.first { $0.skill.id == skillID }
+    }
+
+    func matchesSearchAndCategory(_ skill: Skill) -> Bool {
+        if let selectedCategory, skill.category != selectedCategory {
+            return false
+        }
+
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard query.isEmpty == false else { return true }
+        return ([skill.name, skill.description, skill.sourcePath] + skill.tags + SkillClassifier.searchTerms(for: skill))
+            .contains { $0.lowercased().contains(query) }
     }
 
     private func updateSkillRecommendations() {

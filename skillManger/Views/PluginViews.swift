@@ -199,6 +199,11 @@ private struct PluginSkillSummaryRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
 
+                HStack(spacing: 6) {
+                    OriginBadge(origin: skill.origin)
+                    CategoryBadge(category: skill.category)
+                }
+
                 Text(skill.sourcePath)
                     .font(.caption.monospaced())
                     .foregroundStyle(.tertiary)

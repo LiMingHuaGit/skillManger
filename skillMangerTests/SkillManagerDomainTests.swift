@@ -78,6 +78,58 @@ struct SkillManagerDomainTests {
         #expect(skills.allSatisfy { $0.healthStatus == .duplicateName })
     }
 
+    @Test func classifierIdentifiesOfficialAndInstalledSkills() throws {
+        let systemSkill = Skill.fixture(
+            name: "skill-creator",
+            description: "Create Codex skills.",
+            sourceType: .system,
+            sourcePath: "/Users/ming/.codex/skills/.system/skill-creator/SKILL.md"
+        )
+        let curatedSkill = Skill.fixture(
+            name: "appkit-interop",
+            description: "Bridge SwiftUI and AppKit.",
+            sourceType: .plugin,
+            sourcePath: "/Users/ming/.codex/plugins/cache/openai-api-curated/build-macos-apps/1.0/skills/appkit-interop/SKILL.md"
+        )
+        let installedSkill = Skill.fixture(
+            name: "local-dependency-manager",
+            description: "Use local shell tools.",
+            sourceType: .local,
+            sourcePath: "/Users/ming/.codex/skills/local-dependency-manager/SKILL.md"
+        )
+
+        #expect(systemSkill.origin == .official)
+        #expect(curatedSkill.origin == .official)
+        #expect(installedSkill.origin == .userInstalled)
+    }
+
+    @Test func classifierCategorizesSkillsByWeightedKeywords() throws {
+        let design = Skill.fixture(name: "design-system", description: "Design UI components and typography.", sourceType: .local)
+        let code = Skill.fixture(name: "swiftui-performance", description: "Debug and optimize SwiftUI code.", sourceType: .plugin)
+        let operations = Skill.fixture(name: "computer-use", description: "Control browser clicks and desktop software.", sourceType: .plugin)
+        let documents = Skill.fixture(name: "docx", description: "Create and edit Word documents.", sourceType: .local)
+
+        #expect(design.category == .uiDesign)
+        #expect(code.category == .codeDevelopment)
+        #expect(operations.category == .softwareOperations)
+        #expect(documents.category == .documentsOffice)
+    }
+
+    @Test func storeFiltersSkillsByDetectedCategory() throws {
+        let store = SkillLibraryStore(
+            preferences: InMemorySkillPreferences(),
+            initialSkills: [
+                .fixture(name: "design-system", description: "Design UI components.", sourceType: .local),
+                .fixture(name: "swift-debugger", description: "Debug Swift code.", sourceType: .plugin),
+                .fixture(name: "computer-use", description: "Control browser and desktop software.", sourceType: .plugin)
+            ]
+        )
+
+        store.selectedCategory = .softwareOperations
+
+        #expect(store.visibleSkills.map(\.name) == ["computer-use"])
+    }
+
     @Test func skillIndexerDeduplicatesNestedRootsAndScansHiddenPluginAgentSkills() throws {
         let pluginRoot = try TemporarySkillRoot()
         try pluginRoot.writeSkill(

@@ -193,17 +193,28 @@ struct SkillLibraryView: View {
                 recommendationToolbar
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(SkillLibraryFilter.allCases) { filter in
-                        Button(L10n.string(filter.localizationKey, locale: languageSettings.locale)) {
-                            store.selectedFilter = filter
-                            selectedSection = section(for: filter)
+            HStack(spacing: 10) {
+                Picker(categoryPickerTitle, selection: $store.selectedCategory) {
+                    Text(allCategoriesTitle).tag(nil as SkillCategory?)
+                    ForEach(SkillCategory.allCases) { category in
+                        Label(category.title(locale: languageSettings.locale), systemImage: category.systemImage)
+                            .tag(Optional(category))
+                    }
+                }
+                .frame(width: 160)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(SkillLibraryFilter.allCases) { filter in
+                            Button(L10n.string(filter.localizationKey, locale: languageSettings.locale)) {
+                                store.selectedFilter = filter
+                                selectedSection = section(for: filter)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(store.selectedFilter == filter ? .black : .gray.opacity(0.2))
+                            .foregroundStyle(store.selectedFilter == filter ? .white : .primary)
+                            .clipShape(Capsule())
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(store.selectedFilter == filter ? .black : .gray.opacity(0.2))
-                        .foregroundStyle(store.selectedFilter == filter ? .white : .primary)
-                        .clipShape(Capsule())
                     }
                 }
             }
@@ -325,12 +336,15 @@ struct SkillLibraryView: View {
     }
 
     private func filtered(_ skills: [Skill]) -> [Skill] {
-        let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard query.isEmpty == false else { return skills }
-        return skills.filter { skill in
-            ([skill.name, skill.description, skill.sourcePath] + skill.tags)
-                .contains { $0.lowercased().contains(query) }
-        }
+        skills.filter(store.matchesSearchAndCategory)
+    }
+
+    private var categoryPickerTitle: String {
+        languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "分类" : "Category"
+    }
+
+    private var allCategoriesTitle: String {
+        languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "全部分类" : "All Categories"
     }
 
     private func keepSkillSelectionInsideDisplayedSkills() {

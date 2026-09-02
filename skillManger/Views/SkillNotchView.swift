@@ -233,7 +233,7 @@ struct SkillNotchView: View {
         guard query.isEmpty == false else { return store.recommendationRankedSkills }
 
         return store.recommendationRankedSkills.filter { skill in
-            ([skill.name, skill.description, skill.sourcePath] + skill.tags)
+            ([skill.name, skill.description, skill.sourcePath] + skill.tags + SkillClassifier.searchTerms(for: skill))
                 .contains { $0.lowercased().contains(query) }
         }
     }
@@ -292,12 +292,21 @@ private struct NotchSkillRow: View {
                     .background(Color.accentColor.opacity(0.90), in: Capsule())
             }
 
-            Text(skill.sourceType == .plugin ? L10n.string("Plugin", locale: locale) : L10n.string("Skill", locale: locale))
+            Label(skill.origin.title(locale: locale), systemImage: skill.origin.systemImage)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.62))
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background(.white.opacity(0.10), in: Capsule())
+                .foregroundStyle(skill.origin == .official ? Color.cyan : Color.white.opacity(0.62))
+                .labelStyle(.iconOnly)
+                .padding(6)
+                .background(.white.opacity(0.10), in: Circle())
+                .help(skill.origin.title(locale: locale))
+
+            Label(skill.category.title(locale: locale), systemImage: skill.category.systemImage)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.66))
+                .labelStyle(.iconOnly)
+                .padding(6)
+                .background(.white.opacity(0.10), in: Circle())
+                .help(skill.category.title(locale: locale))
 
             Button(action: copyAction) {
                 Image(systemName: "doc.on.doc")

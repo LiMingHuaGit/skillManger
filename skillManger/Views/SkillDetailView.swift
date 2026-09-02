@@ -63,6 +63,8 @@ struct SkillDetailView: View {
 
             HStack(spacing: 8) {
                 SourceBadge(sourceType: skill.sourceType)
+                OriginBadge(origin: skill.origin)
+                CategoryBadge(category: skill.category)
                 HealthBadge(status: skill.healthStatus)
                 ForEach(skill.tags.prefix(4), id: \.self) { tag in
                     Text(tag)
