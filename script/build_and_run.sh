@@ -38,13 +38,17 @@ case "$MODE" in
     open_app
     /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
     ;;
+  --performance|performance)
+    open_app
+    /usr/bin/log stream --debug --style compact --predicate "subsystem == \"$BUNDLE_ID\" AND category ENDSWITH \"Performance\""
+    ;;
   --verify|verify)
     open_app
     sleep 1
     pgrep -x "$APP_NAME" >/dev/null
     ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [run|--debug|--logs|--telemetry|--performance|--verify]" >&2
     exit 2
     ;;
 esac

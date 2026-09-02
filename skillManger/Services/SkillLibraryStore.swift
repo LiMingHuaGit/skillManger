@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 protocol SkillPreferencesStoring: AnyObject {
     var favoriteSkillIDs: [String] { get set }
@@ -191,6 +192,7 @@ final class SkillLibraryStore: ObservableObject {
     }
 
     var visibleSkills: [Skill] {
+        let startedAt = PerformanceDiagnostics.start()
         var candidates = visibleSkillCandidates
 
         switch selectedFilter {
@@ -223,15 +225,31 @@ final class SkillLibraryStore: ObservableObject {
             candidates = candidates.filter { $0.category == selectedCategory }
         }
 
-        if selectedFilter == .recommended {
-            return rankRecommendationsFirst(candidates)
-        }
-
-        return sort(candidates)
+        let result = selectedFilter == .recommended
+            ? rankRecommendationsFirst(candidates)
+            : sort(candidates)
+        PerformanceDiagnostics.finish(
+            "visible_skills",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            details: "source=\(skills.count) filter=\(selectedFilter.rawValue) search=\(!query.isEmpty) category=\(selectedCategory?.rawValue ?? "all")",
+            slowThresholdMS: 12
+        )
+        return result
     }
 
     var recommendationRankedSkills: [Skill] {
-        rankRecommendationsFirst(visibleSkillCandidates)
+        let startedAt = PerformanceDiagnostics.start()
+        let result = rankRecommendationsFirst(visibleSkillCandidates)
+        PerformanceDiagnostics.finish(
+            "recommendation_ranked_skills",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            slowThresholdMS: 12
+        )
+        return result
     }
 
     var selectedCodexSession: CodexSessionContext? {
@@ -244,20 +262,39 @@ final class SkillLibraryStore: ObservableObject {
     }
 
     var standaloneSkills: [Skill] {
-        sort(skills.filter { $0.sourceType != .plugin })
+        let startedAt = PerformanceDiagnostics.start()
+        let result = sort(skills.filter { $0.sourceType != .plugin })
+        PerformanceDiagnostics.finish(
+            "standalone_skills",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            slowThresholdMS: 12
+        )
+        return result
     }
 
     var pluginSkills: [Skill] {
-        sort(skills.filter { $0.sourceType == .plugin })
+        let startedAt = PerformanceDiagnostics.start()
+        let result = sort(skills.filter { $0.sourceType == .plugin })
+        PerformanceDiagnostics.finish(
+            "plugin_skills",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            slowThresholdMS: 12
+        )
+        return result
     }
 
     var pluginPackages: [PluginPackage] {
+        let startedAt = PerformanceDiagnostics.start()
         let grouped = Dictionary(grouping: pluginSkills.compactMap { skill -> (PluginPackageIdentity, Skill)? in
             guard let identity = PluginPackageIdentity(skill: skill) else { return nil }
             return (identity, skill)
         }, by: { $0.0 })
 
-        return grouped.map { identity, entries in
+        let result: [PluginPackage] = grouped.map { identity, entries in
             let packageSkills = sort(entries.map(\.1))
             return PluginPackage(
                 id: identity.id,
@@ -272,6 +309,15 @@ final class SkillLibraryStore: ObservableObject {
         .sorted { lhs, rhs in
             lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
         }
+        PerformanceDiagnostics.finish(
+            "plugin_packages",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            details: "plugin_skills=\(grouped.values.reduce(0) { $0 + $1.count })",
+            slowThresholdMS: 12
+        )
+        return result
     }
 
     func skills(forPluginID pluginID: PluginPackage.ID) -> [Skill] {
@@ -281,23 +327,45 @@ final class SkillLibraryStore: ObservableObject {
     }
 
     func duplicateSkills(for skill: Skill) -> [Skill] {
-        skills
+        let startedAt = PerformanceDiagnostics.start()
+        let result = skills
             .filter { candidate in
                 candidate.name.caseInsensitiveCompare(skill.name) == .orderedSame && candidate.sourcePath != skill.sourcePath
             }
             .sorted { lhs, rhs in
                 lhs.sourcePath.localizedCaseInsensitiveCompare(rhs.sourcePath) == .orderedAscending
             }
+        PerformanceDiagnostics.finish(
+            "duplicate_lookup",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            details: "source=\(skills.count)",
+            slowThresholdMS: 8
+        )
+        return result
     }
 
     func refresh() throws {
+        let startedAt = PerformanceDiagnostics.start()
         let enabledRoots = roots.filter(\.enabled).map { URL(fileURLWithPath: NSString(string: $0.path).expandingTildeInPath) }
+        PerformanceDiagnostics.indexing.info("refresh_started roots=\(enabledRoots.count) existing_skills=\(self.skills.count)")
         skills = try indexer.index(rootURLs: enabledRoots)
         selectedSkillID = selectedSkillID ?? skills.first?.id
         refreshRecommendations()
+        PerformanceDiagnostics.finish(
+            "library_refresh",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.indexing,
+            itemCount: skills.count,
+            details: "roots=\(enabledRoots.count)",
+            slowThresholdMS: 100
+        )
     }
 
     func refreshRecommendations() {
+        let startedAt = PerformanceDiagnostics.start()
+        PerformanceDiagnostics.recommendations.info("recommendation_refresh_started skills=\(self.skills.count)")
         do {
             let sessions = try codexSessionReader.recentContexts()
             codexSessions = sessions
@@ -307,10 +375,19 @@ final class SkillLibraryStore: ObservableObject {
                 updateSkillRecommendations()
             }
             recommendationError = nil
+            PerformanceDiagnostics.finish(
+                "recommendation_refresh",
+                startedAt: startedAt,
+                logger: PerformanceDiagnostics.recommendations,
+                itemCount: skillRecommendations.count,
+                details: "sessions=\(sessions.count)",
+                slowThresholdMS: 50
+            )
         } catch {
             codexSessions = []
             skillRecommendations = []
             recommendationError = error.localizedDescription
+            PerformanceDiagnostics.recommendations.error("recommendation_refresh_failed duration_ms=\(PerformanceDiagnostics.milliseconds(since: startedAt), format: .fixed(precision: 2)) error=\(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -330,8 +407,17 @@ final class SkillLibraryStore: ObservableObject {
     }
 
     private func updateSkillRecommendations() {
+        let startedAt = PerformanceDiagnostics.start()
         guard let selectedCodexSession else {
             skillRecommendations = []
+            PerformanceDiagnostics.finish(
+                "recommendation_match",
+                startedAt: startedAt,
+                logger: PerformanceDiagnostics.recommendations,
+                itemCount: 0,
+                details: "no_session",
+                slowThresholdMS: 20
+            )
             return
         }
 
@@ -344,6 +430,14 @@ final class SkillLibraryStore: ObservableObject {
         }
 
         skillRecommendations = recommender.recommendations(for: selectedCodexSession, skills: candidates)
+        PerformanceDiagnostics.finish(
+            "recommendation_match",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.recommendations,
+            itemCount: skillRecommendations.count,
+            details: "candidates=\(candidates.count)",
+            slowThresholdMS: 20
+        )
     }
 
     private var visibleSkillCandidates: [Skill] {

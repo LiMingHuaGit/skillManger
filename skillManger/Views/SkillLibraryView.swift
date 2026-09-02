@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import OSLog
 
 enum LibrarySection: String, CaseIterable, Identifiable {
     case library
@@ -83,7 +84,24 @@ struct SkillLibraryView: View {
             }
         }
         .onChange(of: selectedSection) { _, newValue in
+            let startedAt = PerformanceDiagnostics.start()
+            PerformanceDiagnostics.library.info("section_change_started section=\(newValue.rawValue, privacy: .public) skills=\(store.skills.count)")
             applySection(newValue)
+            PerformanceDiagnostics.finish(
+                "section_change_sync",
+                startedAt: startedAt,
+                logger: PerformanceDiagnostics.library,
+                itemCount: store.skills.count,
+                details: "section=\(newValue.rawValue)",
+                slowThresholdMS: 16
+            )
+            logNextMainQueueTurn(operation: "section_change_settled", startedAt: startedAt, details: "section=\(newValue.rawValue)")
+        }
+        .onChange(of: store.selectedSkillID) { oldValue, newValue in
+            guard oldValue != newValue else { return }
+            let startedAt = PerformanceDiagnostics.start()
+            PerformanceDiagnostics.library.info("skill_selection_changed has_selection=\(newValue != nil) skills=\(store.skills.count)")
+            logNextMainQueueTurn(operation: "skill_selection_settled", startedAt: startedAt, details: "has_selection=\(newValue != nil)")
         }
     }
 
@@ -304,35 +322,57 @@ struct SkillLibraryView: View {
     }
 
     private var selectedPlugin: PluginPackage? {
-        guard let selectedPluginID else { return displayedPlugins.first }
-        return displayedPlugins.first { $0.id == selectedPluginID } ?? displayedPlugins.first
+        let plugins = displayedPlugins
+        guard let selectedPluginID else { return plugins.first }
+        return plugins.first { $0.id == selectedPluginID } ?? plugins.first
     }
 
     private var selectedDisplayedSkill: Skill? {
-        guard let selectedSkillID = store.selectedSkillID else { return displayedSkills.first }
-        return displayedSkills.first { $0.id == selectedSkillID } ?? displayedSkills.first
+        let skills = displayedSkills
+        guard let selectedSkillID = store.selectedSkillID else { return skills.first }
+        return skills.first { $0.id == selectedSkillID } ?? skills.first
     }
 
     private var displayedSkills: [Skill] {
-        switch selectedSection {
+        let startedAt = PerformanceDiagnostics.start()
+        let result: [Skill] = switch selectedSection {
         case .recommendations:
-            return filtered(store.recommendationRankedSkills)
+            filtered(store.recommendationRankedSkills)
         case .standaloneSkills:
-            return filtered(store.standaloneSkills)
+            filtered(store.standaloneSkills)
         case .pluginSkills:
-            return filtered(store.pluginSkills)
+            filtered(store.pluginSkills)
         default:
-            return store.visibleSkills
+            store.visibleSkills
         }
+        PerformanceDiagnostics.finish(
+            "displayed_skills",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            details: "section=\(selectedSection.rawValue)",
+            slowThresholdMS: 12
+        )
+        return result
     }
 
     private var displayedPlugins: [PluginPackage] {
+        let startedAt = PerformanceDiagnostics.start()
         let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard query.isEmpty == false else { return store.pluginPackages }
-        return store.pluginPackages.filter { package in
+        let packages = store.pluginPackages
+        let result = query.isEmpty ? packages : packages.filter { package in
             [package.name, package.marketplaceID, package.version ?? "", package.rootPath, package.displayName]
                 .contains { $0.lowercased().contains(query) }
         }
+        PerformanceDiagnostics.finish(
+            "displayed_plugins",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.library,
+            itemCount: result.count,
+            details: "source=\(packages.count) search=\(!query.isEmpty)",
+            slowThresholdMS: 12
+        )
+        return result
     }
 
     private func filtered(_ skills: [Skill]) -> [Skill] {
@@ -348,16 +388,41 @@ struct SkillLibraryView: View {
     }
 
     private func keepSkillSelectionInsideDisplayedSkills() {
-        guard displayedSkills.isEmpty == false else {
+        let startedAt = PerformanceDiagnostics.start()
+        let skills = displayedSkills
+        defer {
+            PerformanceDiagnostics.finish(
+                "selection_validation",
+                startedAt: startedAt,
+                logger: PerformanceDiagnostics.library,
+                itemCount: skills.count,
+                details: "section=\(selectedSection.rawValue)",
+                slowThresholdMS: 12
+            )
+        }
+        guard skills.isEmpty == false else {
             store.selectedSkillID = nil
             return
         }
 
         if let selectedSkillID = store.selectedSkillID,
-           displayedSkills.contains(where: { $0.id == selectedSkillID }) {
+           skills.contains(where: { $0.id == selectedSkillID }) {
             return
         }
 
-        store.selectedSkillID = displayedSkills.first?.id
+        store.selectedSkillID = skills.first?.id
+    }
+
+    private func logNextMainQueueTurn(operation: String, startedAt: UInt64, details: String) {
+        DispatchQueue.main.async {
+            PerformanceDiagnostics.finish(
+                operation,
+                startedAt: startedAt,
+                logger: PerformanceDiagnostics.library,
+                itemCount: store.skills.count,
+                details: details,
+                slowThresholdMS: 32
+            )
+        }
     }
 }

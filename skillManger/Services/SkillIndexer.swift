@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 
 struct SkillIndexer {
     private let fileManager: FileManager
@@ -15,32 +16,65 @@ struct SkillIndexer {
     }
 
     func index(rootURLs: [URL]) throws -> [Skill] {
+        let startedAt = PerformanceDiagnostics.start()
         let indexedAt = Date()
         var skills: [Skill] = []
         var indexedPaths = Set<String>()
 
         for rootURL in rootURLs where fileManager.fileExists(atPath: rootURL.path) {
-            for skillFile in skillFiles(in: rootURL) {
+            let rootStartedAt = PerformanceDiagnostics.start()
+            let files = skillFiles(in: rootURL)
+            var indexedFromRoot = 0
+            for skillFile in files {
                 let canonicalPath = skillFile.resolvingSymlinksInPath().standardizedFileURL.path
                 guard indexedPaths.insert(canonicalPath).inserted else { continue }
                 let skill = parseSkill(fileURL: skillFile, rootURL: rootURL, indexedAt: indexedAt)
                 skills.append(skill)
+                indexedFromRoot += 1
             }
+            PerformanceDiagnostics.finish(
+                "index_root",
+                startedAt: rootStartedAt,
+                logger: PerformanceDiagnostics.indexing,
+                itemCount: indexedFromRoot,
+                details: "discovered=\(files.count) source=\(sourceType(for: rootURL, fileURL: rootURL).rawValue)",
+                slowThresholdMS: 50
+            )
         }
 
         let duplicateNames = Dictionary(grouping: skills, by: { $0.name.lowercased() })
             .filter { $0.value.count > 1 }
             .map(\.key)
 
-        guard duplicateNames.isEmpty == false else { return skills.sortedForLibrary() }
+        guard duplicateNames.isEmpty == false else {
+            let result = skills.sortedForLibrary()
+            PerformanceDiagnostics.finish(
+                "index_all_roots",
+                startedAt: startedAt,
+                logger: PerformanceDiagnostics.indexing,
+                itemCount: result.count,
+                details: "roots=\(rootURLs.count) duplicates=0",
+                slowThresholdMS: 100
+            )
+            return result
+        }
 
-        return skills.map { skill in
+        let result = skills.map { skill in
             guard duplicateNames.contains(skill.name.lowercased()) else { return skill }
             var duplicate = skill
             duplicate.healthStatus = .duplicateName
             return duplicate
         }
         .sortedForLibrary()
+        PerformanceDiagnostics.finish(
+            "index_all_roots",
+            startedAt: startedAt,
+            logger: PerformanceDiagnostics.indexing,
+            itemCount: result.count,
+            details: "roots=\(rootURLs.count) duplicate_names=\(duplicateNames.count)",
+            slowThresholdMS: 100
+        )
+        return result
     }
 
     private func skillFiles(in rootURL: URL) -> [URL] {
