@@ -493,7 +493,11 @@ struct SkillLibraryView: View {
     }
 
     private func filtered(_ skills: [Skill]) -> [Skill] {
-        skills.filter(store.matchesSearchAndCategory)
+        store.searchResults(
+            in: skills.filter { skill in
+                store.selectedCategory == nil || skill.category == store.selectedCategory
+            }
+        )
     }
 
     private var categoryPickerTitle: String {

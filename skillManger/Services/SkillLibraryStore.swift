@@ -190,21 +190,16 @@ final class SkillLibraryStore: ObservableObject {
             candidates = candidates.filter(\.isNeedsReview)
         }
 
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if query.isEmpty == false {
-            candidates = candidates.filter { skill in
-                ([skill.name, skill.description, skill.sourcePath] + skill.tags + SkillClassifier.searchTerms(for: skill))
-                    .contains { $0.lowercased().contains(query) }
-            }
-        }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let selectedCategory {
             candidates = candidates.filter { $0.category == selectedCategory }
         }
 
-        let result = selectedFilter == .recommended
+        let sortedCandidates = selectedFilter == .recommended
             ? rankRecommendationsFirst(candidates)
             : sort(candidates)
+        let result = searchResults(in: sortedCandidates, query: query)
         PerformanceDiagnostics.finish(
             "visible_skills",
             startedAt: startedAt,
@@ -377,10 +372,29 @@ final class SkillLibraryStore: ObservableObject {
             return false
         }
 
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.isEmpty == false else { return true }
-        return ([skill.name, skill.description, skill.sourcePath] + skill.tags + SkillClassifier.searchTerms(for: skill))
-            .contains { $0.lowercased().contains(query) }
+        return searchScore(for: skill, query: query) > 0
+    }
+
+    func searchResults(in skills: [Skill], query: String? = nil) -> [Skill] {
+        let query = query ?? searchText
+        let normalizedQuery = Self.normalizedSearchText(query)
+        guard normalizedQuery.isEmpty == false else { return skills }
+
+        let tieBreakOrder = Dictionary(uniqueKeysWithValues: skills.enumerated().map { ($0.element.id, $0.offset) })
+        return skills
+            .compactMap { skill -> (skill: Skill, score: Int)? in
+                let score = searchScore(for: skill, query: normalizedQuery)
+                return score > 0 ? (skill, score) : nil
+            }
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score {
+                    return lhs.score > rhs.score
+                }
+                return (tieBreakOrder[lhs.skill.id] ?? Int.max) < (tieBreakOrder[rhs.skill.id] ?? Int.max)
+            }
+            .map(\.skill)
     }
 
     private func updateSkillRecommendations() {
@@ -412,6 +426,63 @@ final class SkillLibraryStore: ObservableObject {
             details: "candidates=\(candidates.count)",
             slowThresholdMS: 20
         )
+    }
+
+    private func searchScore(for skill: Skill, query: String) -> Int {
+        let normalizedQuery = Self.normalizedSearchText(query)
+        let queryTokens = Self.searchTokens(normalizedQuery)
+        guard queryTokens.isEmpty == false else { return 0 }
+
+        let name = Self.normalizedSearchText(skill.name)
+        let nameTokens = Self.searchTokens(name)
+        let tags = skill.tags.map { Self.normalizedSearchText($0) }
+        let description = Self.normalizedSearchText(skill.description)
+        let path = Self.normalizedSearchText(skill.sourcePath)
+        let classifierTerms = SkillClassifier.searchTerms(for: skill).map { Self.normalizedSearchText($0) }
+
+        func tokenScore(_ token: String) -> Int {
+            if nameTokens.contains(token) { return 1_000 }
+            if nameTokens.contains(where: { $0.hasPrefix(token) }) { return 850 }
+            if name.contains(token) { return 700 }
+            if tags.contains(token) { return 650 }
+            if tags.contains(where: { $0.hasPrefix(token) }) { return 500 }
+            if tags.contains(where: { $0.contains(token) }) { return 350 }
+            if description.contains(token) { return 150 }
+            if path.contains(token) { return 75 }
+            if classifierTerms.contains(where: { $0.contains(token) }) { return 20 }
+            return 0
+        }
+
+        let tokenScores = queryTokens.map(tokenScore)
+        guard tokenScores.allSatisfy({ $0 > 0 }) else { return 0 }
+
+        let phraseBonus: Int
+        if name == normalizedQuery {
+            phraseBonus = 5_000
+        } else if name.hasPrefix(normalizedQuery) {
+            phraseBonus = 4_000
+        } else if name.contains(normalizedQuery) {
+            phraseBonus = 3_000
+        } else if tags.contains(normalizedQuery) {
+            phraseBonus = 2_000
+        } else if tags.contains(where: { $0.hasPrefix(normalizedQuery) }) {
+            phraseBonus = 1_500
+        } else {
+            phraseBonus = 0
+        }
+
+        return phraseBonus + tokenScores.reduce(0, +)
+    }
+
+    private static func normalizedSearchText(_ value: String) -> String {
+        String(value.lowercased().map { $0.isLetter || $0.isNumber ? $0 : " " })
+            .split(separator: " ")
+            .map(String.init)
+            .joined(separator: " ")
+    }
+
+    private static func searchTokens(_ value: String) -> [String] {
+        normalizedSearchText(value).split(separator: " ").map(String.init)
     }
 
     private var visibleSkillCandidates: [Skill] {

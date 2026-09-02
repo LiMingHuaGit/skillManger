@@ -198,6 +198,37 @@ struct SkillManagerDomainTests {
         #expect(store.visibleSkills.map(\.name) == ["local-dependency-manager"])
     }
 
+    @Test func storeSearchRanksNameAndTagsBeforeBroadMetadataMatches() throws {
+        let store = SkillLibraryStore(
+            preferences: InMemorySkillPreferences(),
+            initialSkills: [
+                .fixture(name: "asset-optimizer", description: "Optimize image assets.", sourceType: .local),
+                .fixture(name: "gemini-image", description: "Generate visual assets.", sourceType: .local),
+                .fixture(name: "visual-helper", description: "Create visual assets.", sourceType: .local, tags: ["image"]),
+                .fixture(name: "media-helper", description: "Edit photos and video.", sourceType: .local)
+            ]
+        )
+
+        store.sortMode = .name
+        store.searchText = "image"
+
+        #expect(store.visibleSkills.map(\.name) == ["gemini-image", "visual-helper", "asset-optimizer", "media-helper"])
+    }
+
+    @Test func storeSearchNormalizesSpacesAndHyphens() throws {
+        let store = SkillLibraryStore(
+            preferences: InMemorySkillPreferences(),
+            initialSkills: [
+                .fixture(name: "gemini-image", description: "Generate visual assets.", sourceType: .local),
+                .fixture(name: "gemini-helper", description: "Work with image generation.", sourceType: .local)
+            ]
+        )
+
+        store.searchText = "gemini image"
+
+        #expect(store.visibleSkills.map(\.name) == ["gemini-image", "gemini-helper"])
+    }
+
     @Test func storeReportsDuplicateSkillsForDetailResolution() throws {
         let store = SkillLibraryStore(
             preferences: InMemorySkillPreferences(),
@@ -418,7 +449,8 @@ private extension Skill {
         name: String,
         description: String,
         sourceType: SkillSourceType,
-        sourcePath: String? = nil
+        sourcePath: String? = nil,
+        tags: [String]? = nil
     ) -> Skill {
         Skill(
             id: name,
@@ -428,7 +460,7 @@ private extension Skill {
             sourcePath: sourcePath ?? "/tmp/\(name)/SKILL.md",
             pluginURI: sourceType == .plugin ? "plugin://example/\(name)" : nil,
             rootPath: "/tmp",
-            tags: [sourceType.rawValue],
+            tags: tags ?? [sourceType.rawValue],
             lastModifiedAt: Date(timeIntervalSince1970: 1_784_000_000),
             lastIndexedAt: Date(timeIntervalSince1970: 1_784_021_600),
             healthStatus: .healthy,

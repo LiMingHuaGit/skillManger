@@ -231,13 +231,7 @@ struct SkillNotchView: View {
     }
 
     private var filteredSkills: [Skill] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard query.isEmpty == false else { return store.recommendationRankedSkills }
-
-        return store.recommendationRankedSkills.filter { skill in
-            ([skill.name, skill.description, skill.sourcePath] + skill.tags + SkillClassifier.searchTerms(for: skill))
-                .contains { $0.lowercased().contains(query) }
-        }
+        store.searchResults(in: store.recommendationRankedSkills, query: searchText)
     }
 
     private func copy(_ skill: Skill) {
