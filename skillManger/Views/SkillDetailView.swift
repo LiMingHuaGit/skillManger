@@ -16,6 +16,7 @@ struct SkillDetailView: View {
 
     @State private var selectedTemplateID: String = PlatformTemplate.codexLocalSkill.id
     @State private var useCase: String = ""
+    @State private var activeAlert: SkillDetailAlert?
 
     var body: some View {
         Group {
@@ -42,6 +43,25 @@ struct SkillDetailView: View {
                 EmptyStateView(title: L10n.string("Select a skill", locale: locale), message: L10n.string("Choose a skill to see when to use it and copy a platform reference.", locale: locale), systemImage: "text.book.closed")
             }
         }
+        .alert(item: $activeAlert) { alert in
+            switch alert {
+            case .delete(let skill):
+                Alert(
+                    title: Text(deleteTitle(for: skill)),
+                    message: Text(deleteMessage(for: skill)),
+                    primaryButton: .destructive(Text(deleteButtonTitle)) {
+                        delete(skill)
+                    },
+                    secondaryButton: .cancel(Text(cancelButtonTitle))
+                )
+            case .error(let message):
+                Alert(
+                    title: Text(deletionFailedTitle),
+                    message: Text(message),
+                    dismissButton: .default(Text(confirmButtonTitle))
+                )
+            }
+        }
     }
 
     private func header(for skill: Skill) -> some View {
@@ -63,6 +83,17 @@ struct SkillDetailView: View {
                         .lineSpacing(2)
                 }
                 Spacer()
+                if store.canDelete(skill) {
+                    Button(role: .destructive) {
+                        activeAlert = .delete(skill)
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(Color.red)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.bordered)
+                    .help(deleteSkillTitle)
+                }
                 Button {
                     store.toggleFavorite(skillID: skill.id)
                 } label: {
@@ -293,6 +324,67 @@ struct SkillDetailView: View {
 
     private func revealInFinder(_ path: String) {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    private func delete(_ skill: Skill) {
+        do {
+            try store.deleteSkill(skill)
+            store.toastMessage = skillDeletedMessage
+        } catch {
+            activeAlert = .error(localizedDeletionError(error))
+        }
+    }
+
+    private var isChinese: Bool {
+        locale.identifier.lowercased().hasPrefix("zh")
+    }
+
+    private var deleteSkillTitle: String { isChinese ? "删除 Skill" : "Delete Skill" }
+    private var deleteButtonTitle: String { isChinese ? "删除" : "Delete" }
+    private var cancelButtonTitle: String { isChinese ? "取消" : "Cancel" }
+    private var confirmButtonTitle: String { isChinese ? "确定" : "OK" }
+    private var deletionFailedTitle: String { isChinese ? "删除失败" : "Deletion Failed" }
+    private var skillDeletedMessage: String { isChinese ? "Skill 已删除" : "Skill deleted" }
+
+    private func deleteTitle(for skill: Skill) -> String {
+        isChinese ? "删除“\(skill.name)”？" : "Delete “\(skill.name)”?"
+    }
+
+    private func deleteMessage(for skill: Skill) -> String {
+        let targetPath = store.deletionTargetPath(for: skill)
+        if isChinese {
+            return "此操作无法撤销。\n\nSkill 路径：\n\(skill.sourcePath)\n\n将删除：\n\(targetPath)"
+        }
+        return "This action cannot be undone.\n\nSkill path:\n\(skill.sourcePath)\n\nItem to delete:\n\(targetPath)"
+    }
+
+    private func localizedDeletionError(_ error: Error) -> String {
+        guard let deletionError = error as? SkillDeletionError else {
+            return error.localizedDescription
+        }
+        if isChinese {
+            switch deletionError {
+            case .readOnlySource:
+                return "系统 Skill 和插件 Skill 由对应安装器管理，无法在这里删除。"
+            case .sourceNotFound:
+                return "Skill 路径已不存在，请刷新库后重试。"
+            case .invalidSourcePath:
+                return "所选项目没有指向有效的 SKILL.md 文件。"
+            }
+        }
+        return deletionError.localizedDescription
+    }
+}
+
+private enum SkillDetailAlert: Identifiable {
+    case delete(Skill)
+    case error(String)
+
+    var id: String {
+        switch self {
+        case .delete(let skill): "delete-\(skill.id)"
+        case .error(let message): "error-\(message)"
+        }
     }
 }
 

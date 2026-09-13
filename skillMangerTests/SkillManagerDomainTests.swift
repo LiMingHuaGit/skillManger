@@ -245,6 +245,75 @@ struct SkillManagerDomainTests {
         #expect(duplicates.map(\.sourcePath) == ["/Users/ming/project/.agents/skills/appkit-interop/SKILL.md"])
     }
 
+    @Test func storeDeletesSkillDirectoryAndCleansReferences() throws {
+        let root = try TemporarySkillRoot()
+        try root.writeSkill(folder: "deletable", contents: "---\nname: deletable\ndescription: Delete me.\n---\n")
+        try "support".write(
+            to: root.url.appendingPathComponent("deletable/helper.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        let skillPath = root.url.appendingPathComponent("deletable/SKILL.md").path
+        let skill = Skill.fixture(name: "deletable", description: "Delete me.", sourceType: .local, sourcePath: skillPath)
+        let remaining = Skill.fixture(name: "remaining", description: "Keep me.", sourceType: .local)
+        let preferences = InMemorySkillPreferences()
+        preferences.favoriteSkillIDs = [skill.id]
+        preferences.usageEvents = [
+            UsageEvent(id: UUID(), skillID: skill.id, platformTemplateID: "plain", copiedAt: .now, copyType: "prompt")
+        ]
+        let store = SkillLibraryStore(
+            preferences: preferences,
+            initialSkills: [skill, remaining],
+            roots: [SkillRoot(path: root.url.path, enabled: true, sourceType: .local, lastIndexedAt: nil, lastError: nil)]
+        )
+        store.selectedSkillID = skill.id
+
+        try store.deleteSkill(skill)
+
+        #expect(FileManager.default.fileExists(atPath: root.url.appendingPathComponent("deletable").path) == false)
+        #expect(store.skills.map(\.id) == [remaining.id])
+        #expect(preferences.favoriteSkillIDs.isEmpty)
+        #expect(preferences.usageEvents.isEmpty)
+        #expect(store.selectedSkillID == remaining.id)
+    }
+
+    @Test func storeDeletesOnlySkillFileWhenItLivesAtConfiguredRoot() throws {
+        let root = try TemporarySkillRoot()
+        try root.writeSkill(folder: "", contents: "---\nname: root-skill\ndescription: Root skill.\n---\n")
+        let markerURL = root.url.appendingPathComponent("keep-me.txt")
+        try "keep".write(to: markerURL, atomically: true, encoding: .utf8)
+        let skill = Skill.fixture(
+            name: "root-skill",
+            description: "Root skill.",
+            sourceType: .local,
+            sourcePath: root.url.appendingPathComponent("SKILL.md").path
+        )
+        let store = SkillLibraryStore(
+            preferences: InMemorySkillPreferences(),
+            initialSkills: [skill],
+            roots: [SkillRoot(path: root.url.path, enabled: true, sourceType: .local, lastIndexedAt: nil, lastError: nil)]
+        )
+
+        try store.deleteSkill(skill)
+
+        #expect(FileManager.default.fileExists(atPath: skill.sourcePath) == false)
+        #expect(FileManager.default.fileExists(atPath: markerURL.path))
+        #expect(FileManager.default.fileExists(atPath: root.url.path))
+    }
+
+    @Test func storeRefusesToDeleteSystemAndPluginSkills() throws {
+        let store = SkillLibraryStore(preferences: InMemorySkillPreferences())
+        let systemSkill = Skill.fixture(name: "skill-creator", description: "Create skills.", sourceType: .system)
+        let pluginSkill = Skill.fixture(name: "appkit-interop", description: "Bridge AppKit.", sourceType: .plugin)
+
+        #expect(throws: SkillDeletionError.readOnlySource) {
+            try store.deleteSkill(systemSkill)
+        }
+        #expect(throws: SkillDeletionError.readOnlySource) {
+            try store.deleteSkill(pluginSkill)
+        }
+    }
+
     @Test func storeSeparatesStandaloneSkillsPluginsAndPluginSkills() throws {
         let store = SkillLibraryStore(
             preferences: InMemorySkillPreferences(),

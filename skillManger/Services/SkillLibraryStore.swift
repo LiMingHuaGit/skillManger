@@ -83,6 +83,7 @@ final class SkillLibraryStore: ObservableObject {
     private let indexer: SkillIndexer
     private let codexSessionReader: CodexSessionContextReader
     private let recommender: SkillRecommender
+    private let fileManager: FileManager
 
     @Published var skills: [Skill]
     @Published var roots: [SkillRoot] {
@@ -108,12 +109,14 @@ final class SkillLibraryStore: ObservableObject {
         initialSkills: [Skill] = [],
         roots: [SkillRoot]? = nil,
         codexConfigURL: URL? = nil,
-        homeDirectory: String = NSHomeDirectory()
+        homeDirectory: String = NSHomeDirectory(),
+        fileManager: FileManager = .default
     ) {
         self.preferences = preferences
         self.indexer = indexer
         self.codexSessionReader = codexSessionReader
         self.recommender = recommender
+        self.fileManager = fileManager
         let resolvedConfigURL = codexConfigURL ?? URL(fileURLWithPath: homeDirectory).appendingPathComponent(".codex/config.toml")
         self.skills = initialSkills
         self.roots = roots ?? Self.preferredRoots(from: preferences.roots, homeDirectory: homeDirectory, codexConfigURL: resolvedConfigURL)
@@ -317,6 +320,61 @@ final class SkillLibraryStore: ObservableObject {
             slowThresholdMS: 8
         )
         return result
+    }
+
+    func canDelete(_ skill: Skill) -> Bool {
+        skill.sourceType == .local || skill.sourceType == .project
+    }
+
+    func deletionTargetPath(for skill: Skill) -> String {
+        (try? deletionTargetURL(for: skill).path) ?? skill.sourcePath
+    }
+
+    func deleteSkill(_ skill: Skill) throws {
+        guard canDelete(skill) else {
+            throw SkillDeletionError.readOnlySource
+        }
+
+        let targetURL = try deletionTargetURL(for: skill)
+        guard fileManager.fileExists(atPath: targetURL.path) else {
+            throw SkillDeletionError.sourceNotFound
+        }
+
+        try fileManager.removeItem(at: targetURL)
+
+        let targetPath = targetURL.standardizedFileURL.path
+        let deletedSkillIDs = Set(skills.compactMap { candidate -> Skill.ID? in
+            let candidatePath = URL(fileURLWithPath: candidate.sourcePath).standardizedFileURL.path
+            if candidatePath == targetPath || candidatePath.hasPrefix(targetPath + "/") {
+                return candidate.id
+            }
+            return nil
+        })
+
+        skills.removeAll { deletedSkillIDs.contains($0.id) }
+        preferences.favoriteSkillIDs.removeAll { deletedSkillIDs.contains($0) }
+        preferences.usageEvents.removeAll { deletedSkillIDs.contains($0.skillID) }
+        skillRecommendations.removeAll { deletedSkillIDs.contains($0.skill.id) }
+
+        if let selectedSkillID, deletedSkillIDs.contains(selectedSkillID) {
+            self.selectedSkillID = visibleSkills.first?.id
+        }
+    }
+
+    private func deletionTargetURL(for skill: Skill) throws -> URL {
+        let sourceURL = URL(fileURLWithPath: skill.sourcePath).standardizedFileURL
+        guard sourceURL.lastPathComponent.caseInsensitiveCompare("SKILL.md") == .orderedSame else {
+            throw SkillDeletionError.invalidSourcePath
+        }
+
+        let skillDirectoryURL = sourceURL.deletingLastPathComponent()
+        let rootPaths = Set(roots.map {
+            URL(fileURLWithPath: NSString(string: $0.path).expandingTildeInPath).standardizedFileURL.path
+        })
+
+        // A configured root can be a collection folder or one standalone skill.
+        // Removing only SKILL.md avoids accidentally deleting an entire scanned library.
+        return rootPaths.contains(skillDirectoryURL.path) ? sourceURL : skillDirectoryURL
     }
 
     func refresh() throws {
@@ -605,6 +663,23 @@ final class SkillLibraryStore: ObservableObject {
         }
 
         return roots
+    }
+}
+
+enum SkillDeletionError: LocalizedError, Equatable {
+    case readOnlySource
+    case sourceNotFound
+    case invalidSourcePath
+
+    var errorDescription: String? {
+        switch self {
+        case .readOnlySource:
+            "System and plugin skills are managed by their installer and cannot be deleted here."
+        case .sourceNotFound:
+            "The skill path no longer exists. Refresh the library and try again."
+        case .invalidSourcePath:
+            "The selected item does not point to a valid SKILL.md file."
+        }
     }
 }
 
