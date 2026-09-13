@@ -20,3 +20,36 @@ final class FileDropPayloadTests: XCTestCase {
         XCTAssertTrue(FileDropPayload.normalizedFileURLs(from: [webURL]).isEmpty)
     }
 }
+
+final class ShelfDragCompletionPolicyTests: XCTestCase {
+    func testRemovesOnlyAfterSuccessfulExternalDropWhenEnabled() {
+        XCTAssertTrue(
+            ShelfDragCompletionPolicy.shouldRemove(
+                behavior: .remove,
+                operation: .copy,
+                droppedOutsidePanel: true
+            )
+        )
+        XCTAssertFalse(
+            ShelfDragCompletionPolicy.shouldRemove(
+                behavior: .keep,
+                operation: .copy,
+                droppedOutsidePanel: true
+            )
+        )
+        XCTAssertFalse(
+            ShelfDragCompletionPolicy.shouldRemove(
+                behavior: .remove,
+                operation: [],
+                droppedOutsidePanel: true
+            )
+        )
+        XCTAssertFalse(
+            ShelfDragCompletionPolicy.shouldRemove(
+                behavior: .remove,
+                operation: .copy,
+                droppedOutsidePanel: false
+            )
+        )
+    }
+}

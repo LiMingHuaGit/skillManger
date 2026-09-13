@@ -23,6 +23,8 @@ struct SkillNotchView: View {
 
     let openLibrary: () -> Void
     let refresh: () -> Void
+    let collapsePanel: () -> Void
+    let resizePanel: (CGSize, Bool) -> Void
 
     @State private var searchText = ""
     @State private var toast: String?
@@ -42,6 +44,16 @@ struct SkillNotchView: View {
         .preferredColorScheme(.dark)
         .environment(\.locale, languageSettings.locale)
         .animation(openAnimation, value: notchState.isExpanded)
+        .overlay(alignment: .bottomTrailing) {
+            if notchState.isExpanded {
+                NotchResizeHandle(
+                    currentSize: notchState.openSize,
+                    onResize: resizePanel
+                )
+                .padding(.trailing, 10)
+                .padding(.bottom, SkillNotchState.Layout.shadowPadding + 8)
+            }
+        }
     }
 
     private var notchSurface: some View {
@@ -125,7 +137,8 @@ struct SkillNotchView: View {
                 case .shelf:
                     NotchFileShelfPane(
                         store: fileShelfStore,
-                        workspaceState: notebookWorkspaceState
+                        workspaceState: notebookWorkspaceState,
+                        settingsStore: notchSettings
                     )
                 }
             }
@@ -207,6 +220,14 @@ struct SkillNotchView: View {
                         Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
                     }
                 }
+
+                Divider()
+
+                Picker("Shelf", selection: $notchSettings.shelfDragCompletionBehavior) {
+                    ForEach(ShelfDragCompletionBehavior.allCases) { behavior in
+                        Text(behavior.title(locale: locale)).tag(behavior)
+                    }
+                }
             } label: {
                 Image(systemName: notchSettings.triggerMode.systemImage)
             }
@@ -227,7 +248,7 @@ struct SkillNotchView: View {
             }
             .help(L10n.string("Open Library", locale: locale))
 
-            Button(action: { notchState.collapse() }) {
+            Button(action: collapsePanel) {
                 Image(systemName: "chevron.up")
             }
             .help(L10n.string("Collapse", locale: locale))
@@ -369,6 +390,51 @@ struct SkillNotchView: View {
         } catch {
             toast = L10n.format("Copy failed: %@", locale: locale, error.localizedDescription)
         }
+    }
+}
+
+private struct NotchResizeHandle: View {
+    @Environment(\.locale) private var locale
+    let currentSize: CGSize
+    let onResize: (CGSize, Bool) -> Void
+
+    @State private var dragStartSize: CGSize?
+    @State private var isHovering = false
+
+    var body: some View {
+        Image(systemName: "arrow.up.left.and.arrow.down.right")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.white.opacity(isHovering ? 0.78 : 0.38))
+            .frame(width: 24, height: 24)
+            .contentShape(Rectangle())
+            .onHover { isHovering = $0 }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let start = dragStartSize ?? currentSize
+                        if dragStartSize == nil { dragStartSize = start }
+                        onResize(
+                            CGSize(
+                                width: start.width + value.translation.width * 2,
+                                height: start.height + value.translation.height
+                            ),
+                            false
+                        )
+                    }
+                    .onEnded { value in
+                        let start = dragStartSize ?? currentSize
+                        dragStartSize = nil
+                        onResize(
+                            CGSize(
+                                width: start.width + value.translation.width * 2,
+                                height: start.height + value.translation.height
+                            ),
+                            true
+                        )
+                    }
+            )
+            .help(locale.identifier.lowercased().hasPrefix("zh") ? "调整面板大小" : "Resize panel")
+            .accessibilityLabel(locale.identifier.lowercased().hasPrefix("zh") ? "调整面板大小" : "Resize panel")
     }
 }
 
@@ -547,6 +613,8 @@ struct SkillNotchShape: Shape {
         notebookWorkspaceState: NotebookWorkspaceState(),
         editorInteractionState: EditorInteractionState(),
         openLibrary: {},
-        refresh: {}
+        refresh: {},
+        collapsePanel: {},
+        resizePanel: { _, _ in }
     )
 }

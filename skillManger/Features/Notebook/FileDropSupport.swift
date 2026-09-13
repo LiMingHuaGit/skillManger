@@ -46,6 +46,16 @@ enum FileDragOperationPolicy {
     static let allowedOperations: NSDragOperation = [.copy, .generic]
 }
 
+enum ShelfDragCompletionPolicy {
+    static func shouldRemove(
+        behavior: ShelfDragCompletionBehavior,
+        operation: NSDragOperation,
+        droppedOutsidePanel: Bool
+    ) -> Bool {
+        behavior == .remove && droppedOutsidePanel && !operation.isEmpty
+    }
+}
+
 enum FileDragGesturePolicy {
     static let activationDistance: CGFloat = 8
 

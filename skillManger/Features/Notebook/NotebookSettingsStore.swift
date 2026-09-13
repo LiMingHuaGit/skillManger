@@ -34,6 +34,23 @@ enum NotchTriggerMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum ShelfDragCompletionBehavior: String, CaseIterable, Identifiable {
+    case keep
+    case remove
+
+    var id: String { rawValue }
+
+    func title(locale: Locale) -> String {
+        let isChinese = locale.identifier.lowercased().hasPrefix("zh")
+        switch self {
+        case .keep:
+            return isChinese ? "拖出后保留" : "Keep after drag"
+        case .remove:
+            return isChinese ? "拖出后自动移除" : "Remove after drag"
+        }
+    }
+}
+
 @MainActor
 final class NotchWorkspaceSettings: ObservableObject {
     @Published var triggerMode: NotchTriggerMode {
@@ -41,11 +58,20 @@ final class NotchWorkspaceSettings: ObservableObject {
             defaults.set(triggerMode.rawValue, forKey: Self.triggerModeKey)
         }
     }
+    @Published var shelfDragCompletionBehavior: ShelfDragCompletionBehavior {
+        didSet {
+            defaults.set(shelfDragCompletionBehavior.rawValue, forKey: Self.shelfDragCompletionBehaviorKey)
+        }
+    }
+    @Published private(set) var preferredExpandedSize: CGSize?
     @Published private(set) var isKeepingAwake = false
     @Published private(set) var isChangingKeepAwake = false
     @Published private(set) var keepAwakeErrorMessage: String?
 
     private static let triggerModeKey = "skillManager.notch.triggerMode"
+    private static let shelfDragCompletionBehaviorKey = "skillManager.shelf.dragCompletionBehavior"
+    private static let expandedWidthKey = "skillManager.notch.expandedWidth"
+    private static let expandedHeightKey = "skillManager.notch.expandedHeight"
     private static let ownsSleepDisabledKey = "skillManager.notch.ownsSleepDisabled"
     private static let completedSleepGuardMigrationKey = "skillManager.notch.completedSleepGuardRecoveryV1"
     private let defaults: UserDefaults
@@ -69,6 +95,15 @@ final class NotchWorkspaceSettings: ObservableObject {
 
         let rawMode = defaults.string(forKey: Self.triggerModeKey)
         triggerMode = rawMode.flatMap(NotchTriggerMode.init(rawValue:)) ?? .hover
+        let rawShelfBehavior = defaults.string(forKey: Self.shelfDragCompletionBehaviorKey)
+        shelfDragCompletionBehavior = rawShelfBehavior
+            .flatMap(ShelfDragCompletionBehavior.init(rawValue:)) ?? .keep
+
+        let savedWidth = defaults.double(forKey: Self.expandedWidthKey)
+        let savedHeight = defaults.double(forKey: Self.expandedHeightKey)
+        preferredExpandedSize = savedWidth > 0 && savedHeight > 0
+            ? CGSize(width: savedWidth, height: savedHeight)
+            : nil
 
         let needsOwnedStateRecovery = defaults.bool(forKey: Self.ownsSleepDisabledKey)
         let needsLegacyRecovery = !defaults.bool(forKey: Self.completedSleepGuardMigrationKey)
@@ -134,6 +169,13 @@ final class NotchWorkspaceSettings: ObservableObject {
 
     func dismissKeepAwakeError() {
         keepAwakeErrorMessage = nil
+    }
+
+    func saveExpandedSize(_ size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        preferredExpandedSize = size
+        defaults.set(size.width, forKey: Self.expandedWidthKey)
+        defaults.set(size.height, forKey: Self.expandedHeightKey)
     }
 
     private func requestKeepAwake() {

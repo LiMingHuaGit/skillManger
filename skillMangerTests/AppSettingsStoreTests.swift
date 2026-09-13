@@ -76,6 +76,26 @@ final class NotchWorkspaceSettingsTests: XCTestCase {
         XCTAssertFalse(defaults.bool(forKey: "skillManager.notch.ownsSleepDisabled"))
     }
 
+    func testShelfDragBehaviorAndExpandedSizePersist() {
+        let defaults = makeDefaults()
+        let store = NotchWorkspaceSettings(
+            defaults: defaults,
+            systemSleepGuard: FakeSystemSleepGuard(),
+            sleepDisabledState: { false }
+        )
+
+        store.shelfDragCompletionBehavior = .remove
+        store.saveExpandedSize(CGSize(width: 880, height: 660))
+
+        let restored = NotchWorkspaceSettings(
+            defaults: defaults,
+            systemSleepGuard: FakeSystemSleepGuard(),
+            sleepDisabledState: { false }
+        )
+        XCTAssertEqual(restored.shelfDragCompletionBehavior, .remove)
+        XCTAssertEqual(restored.preferredExpandedSize, CGSize(width: 880, height: 660))
+    }
+
     private func makeDefaults() -> UserDefaults {
         let suiteName = "AppSettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

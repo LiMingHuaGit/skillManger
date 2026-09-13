@@ -27,4 +27,31 @@ final class NotchGeometryTests: XCTestCase {
             NotchGeometry.fileDropTargetExtension
         )
     }
+
+    func testExpandedSizeUsesSavedPreferenceWithinScreenBounds() {
+        let screenFrame = NSRect(x: 0, y: 0, width: 1200, height: 800)
+
+        XCTAssertEqual(
+            NotchGeometry.clampedExpandedSize(NSSize(width: 900, height: 700), in: screenFrame),
+            NSSize(width: 900, height: 700)
+        )
+        XCTAssertEqual(
+            NotchGeometry.clampedExpandedSize(NSSize(width: 2000, height: 1200), in: screenFrame),
+            NSSize(width: 1164, height: 728)
+        )
+        XCTAssertEqual(
+            NotchGeometry.clampedExpandedSize(NSSize(width: 320, height: 260), in: screenFrame),
+            NotchGeometry.minimumExpandedSize
+        )
+    }
+
+    func testScreenFrameSelectionSupportsOffsetExternalDisplays() {
+        let builtIn = NSRect(x: 0, y: 0, width: 1512, height: 982)
+        let external = NSRect(x: 1512, y: -160, width: 2560, height: 1440)
+
+        XCTAssertEqual(
+            NotchGeometry.screenFrame(containing: NSPoint(x: 2400, y: 900), from: [builtIn, external]),
+            external
+        )
+    }
 }

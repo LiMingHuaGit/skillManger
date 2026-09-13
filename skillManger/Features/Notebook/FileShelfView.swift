@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 struct FileShelfView: View {
     @ObservedObject var store: FileShelfStore
     @ObservedObject var workspaceState: NotebookWorkspaceState
+    @ObservedObject var settingsStore: NotchWorkspaceSettings
     let size: CGSize
     @StateObject private var previewController = FileShelfPreviewController()
     @State private var selection = FileShelfSelection()
@@ -152,7 +153,17 @@ struct FileShelfView: View {
                         onPreview: {
                             previewSelection(preferredID: item.id)
                         },
-                        onDeleteSelected: removeSelectedItems
+                        onDeleteSelected: removeSelectedItems,
+                        onDragEnded: { operation, droppedOutsidePanel in
+                            workspaceState.isDraggingShelfItem = false
+                            workspaceState.isShelfDropTargeted = false
+                            guard ShelfDragCompletionPolicy.shouldRemove(
+                                behavior: settingsStore.shelfDragCompletionBehavior,
+                                operation: operation,
+                                droppedOutsidePanel: droppedOutsidePanel
+                            ) else { return }
+                            removeDraggedItems(startingAt: item.id)
+                        }
                     )
                     .background {
                         GeometryReader { proxy in
@@ -260,6 +271,16 @@ struct FileShelfView: View {
         previewController.close()
     }
 
+    private func removeDraggedItems(startingAt itemID: UUID) {
+        let ids = selection.selectedIDs.contains(itemID)
+            ? selection.selectedIDs
+            : Set([itemID])
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+            store.remove(ids: ids)
+        }
+        selection.retainValidIDs(Set(store.items.map(\.id)))
+    }
+
     private func selectedURLs(startingAt id: UUID? = nil) -> [URL] {
         let selectedIDs = selection.orderedSelection(
             from: store.items.map(\.id),
@@ -310,6 +331,7 @@ private struct FileShelfChip: View {
     let onSelectAll: () -> Void
     let onPreview: () -> Void
     let onDeleteSelected: () -> Void
+    let onDragEnded: (NSDragOperation, Bool) -> Void
     @State private var isHovering = false
     @State private var thumbnail: NSImage?
 
@@ -340,10 +362,7 @@ private struct FileShelfChip: View {
                             workspaceState.isDraggingShelfItem = true
                             workspaceState.isShelfDropTargeted = false
                         },
-                        onDragEnded: {
-                            workspaceState.isDraggingShelfItem = false
-                            workspaceState.isShelfDropTargeted = false
-                        },
+                        onDragEnded: onDragEnded,
                         onHoverChange: { isHovering = $0 },
                         onSelect: onSelect,
                         onSelectExclusive: onSelectExclusive,
@@ -524,7 +543,7 @@ private struct FileDragSourceView: NSViewRepresentable {
     let displayName: String
     let dragURLs: () -> [URL]
     let onDragBegan: () -> Void
-    let onDragEnded: () -> Void
+    let onDragEnded: (NSDragOperation, Bool) -> Void
     let onHoverChange: (Bool) -> Void
     let onSelect: (NSEvent.ModifierFlags) -> Void
     let onSelectExclusive: () -> Void
@@ -563,7 +582,7 @@ private final class FileDragSourceNSView: NSView, NSDraggingSource {
     var displayName = ""
     var dragURLs: (() -> [URL])?
     var onDragBegan: (() -> Void)?
-    var onDragEnded: (() -> Void)?
+    var onDragEnded: ((NSDragOperation, Bool) -> Void)?
     var onHoverChange: ((Bool) -> Void)?
     var onSelect: ((NSEvent.ModifierFlags) -> Void)?
     var onSelectExclusive: (() -> Void)?
@@ -725,7 +744,8 @@ private final class FileDragSourceNSView: NSView, NSDraggingSource {
         endedAt screenPoint: NSPoint,
         operation: NSDragOperation
     ) {
-        onDragEnded?()
+        let droppedOutsidePanel = !(window?.frame.contains(screenPoint) ?? false)
+        onDragEnded?(operation, droppedOutsidePanel)
         onHoverChange?(false)
         didStartDrag = false
         mouseDownLocation = nil

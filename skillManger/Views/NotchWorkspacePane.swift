@@ -33,6 +33,7 @@ struct NotchNotebookPane: View {
                     FileShelfView(
                         store: fileShelfStore,
                         workspaceState: workspaceState,
+                        settingsStore: settingsStore,
                         size: CGSize(width: proxy.size.width, height: 78)
                     )
                     .frame(width: proxy.size.width, height: 78)
@@ -75,6 +76,7 @@ struct NotchFileShelfPane: View {
     @Environment(\.locale) private var locale
     @ObservedObject var store: FileShelfStore
     @ObservedObject var workspaceState: NotebookWorkspaceState
+    @ObservedObject var settingsStore: NotchWorkspaceSettings
 
     var body: some View {
         GeometryReader { proxy in
@@ -94,14 +96,23 @@ struct NotchFileShelfPane: View {
                     .foregroundStyle(.white.opacity(0.66))
                 }
 
-                FileShelfView(store: store, workspaceState: workspaceState, size: proxy.size)
+                FileShelfView(
+                    store: store,
+                    workspaceState: workspaceState,
+                    settingsStore: settingsStore,
+                    size: proxy.size
+                )
                     .frame(width: proxy.size.width, height: proxy.size.height)
             }
                 .dropDestination(for: URL.self) { urls, _ in
+                    guard !workspaceState.isDraggingShelfItem else {
+                        workspaceState.isShelfDropTargeted = false
+                        return false
+                    }
                     workspaceState.isShelfDropTargeted = false
                     return store.acceptDrop(urls)
                 } isTargeted: { targeted in
-                    workspaceState.isShelfDropTargeted = targeted
+                    workspaceState.isShelfDropTargeted = targeted && !workspaceState.isDraggingShelfItem
                 }
         }
     }

@@ -44,6 +44,7 @@ extension NSScreen {
 @MainActor
 enum NotchGeometry {
     static let fileDropTargetExtension: CGFloat = 28
+    static let minimumExpandedSize = NSSize(width: 560, height: 440)
 
     static func targetScreen() -> NSScreen? {
         NSScreen.screens.first(where: \.isBuiltInDisplay)
@@ -52,7 +53,7 @@ enum NotchGeometry {
             ?? NSScreen.screens.first
     }
 
-    static func layout(for screen: NSScreen?) -> NotchLayout {
+    static func layout(for screen: NSScreen?, preferredExpandedSize: NSSize? = nil) -> NotchLayout {
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let measured = screen?.measuredNotchSize ?? .zero
         let fallbackNotch = NSSize(width: 210, height: 32)
@@ -60,16 +61,35 @@ enum NotchGeometry {
 
         let compactWidth = min(max(notch.width - 6, 182), 238)
         let compactHeight = min(max(notch.height + 2, 32), 38)
-        let expandedWidth = min(max(notch.width + 500, 720), 780, screenFrame.width - 36)
-        let expandedHeight = min(max(notch.height + 548, 580), 640, screenFrame.height - 72)
+        let defaultExpandedSize = NSSize(
+            width: min(max(notch.width + 500, 720), 780),
+            height: min(max(notch.height + 548, 580), 640)
+        )
+        let expandedSize = clampedExpandedSize(
+            preferredExpandedSize ?? defaultExpandedSize,
+            in: screenFrame
+        )
 
         return NotchLayout(
             notchSize: notch,
             compactSize: NSSize(width: compactWidth, height: compactHeight),
-            expandedSize: NSSize(width: expandedWidth, height: expandedHeight),
+            expandedSize: expandedSize,
             compactTopOffset: 0,
             expandedTopOffset: 0
         )
+    }
+
+    static func clampedExpandedSize(_ size: NSSize, in screenFrame: NSRect) -> NSSize {
+        let maximumWidth = max(minimumExpandedSize.width, screenFrame.width - 36)
+        let maximumHeight = max(minimumExpandedSize.height, screenFrame.height - 72)
+        return NSSize(
+            width: min(max(size.width, minimumExpandedSize.width), maximumWidth),
+            height: min(max(size.height, minimumExpandedSize.height), maximumHeight)
+        )
+    }
+
+    static func screenFrame(containing point: NSPoint, from frames: [NSRect]) -> NSRect? {
+        frames.first { NSMouseInRect(point, $0, false) }
     }
 
     static func activationFrame(for layout: NotchLayout, in screenFrame: NSRect) -> NSRect {

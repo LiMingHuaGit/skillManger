@@ -92,6 +92,7 @@ struct NotebookView: View {
                         FileShelfView(
                             store: fileShelfStore,
                             workspaceState: workspaceState,
+                            settingsStore: settingsStore,
                             size: fileShelfSize
                         )
                         .frame(width: fileShelfSize.width, height: fileShelfSize.height)
