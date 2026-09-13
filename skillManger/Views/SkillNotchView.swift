@@ -44,16 +44,6 @@ struct SkillNotchView: View {
         .preferredColorScheme(.dark)
         .environment(\.locale, languageSettings.locale)
         .animation(openAnimation, value: notchState.isExpanded)
-        .overlay(alignment: .bottomTrailing) {
-            if notchState.isExpanded {
-                NotchResizeHandle(
-                    currentSize: notchState.openSize,
-                    onResize: resizePanel
-                )
-                .padding(.trailing, NotchGeometry.expandedShadowHorizontalPadding + 10)
-                .padding(.bottom, NotchGeometry.expandedShadowBottomPadding + 8)
-            }
-        }
     }
 
     private var notchSurface: some View {
@@ -137,7 +127,9 @@ struct SkillNotchView: View {
                         imageStore: imageStore,
                         fileShelfStore: fileShelfStore,
                         workspaceState: notebookWorkspaceState,
-                        editorInteractionState: editorInteractionState
+                        editorInteractionState: editorInteractionState,
+                        panelSize: notchState.openSize,
+                        resizePanel: resizePanel
                     )
                 case .shelf:
                     NotchFileShelfPane(
@@ -395,51 +387,6 @@ struct SkillNotchView: View {
         } catch {
             toast = L10n.format("Copy failed: %@", locale: locale, error.localizedDescription)
         }
-    }
-}
-
-private struct NotchResizeHandle: View {
-    @Environment(\.locale) private var locale
-    let currentSize: CGSize
-    let onResize: (CGSize, Bool) -> Void
-
-    @State private var dragStartSize: CGSize?
-    @State private var isHovering = false
-
-    var body: some View {
-        Image(systemName: "arrow.up.left.and.arrow.down.right")
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.white.opacity(isHovering ? 0.78 : 0.38))
-            .frame(width: 24, height: 24)
-            .contentShape(Rectangle())
-            .onHover { isHovering = $0 }
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { value in
-                        let start = dragStartSize ?? currentSize
-                        if dragStartSize == nil { dragStartSize = start }
-                        onResize(
-                            CGSize(
-                                width: start.width + value.translation.width * 2,
-                                height: start.height + value.translation.height
-                            ),
-                            false
-                        )
-                    }
-                    .onEnded { value in
-                        let start = dragStartSize ?? currentSize
-                        dragStartSize = nil
-                        onResize(
-                            CGSize(
-                                width: start.width + value.translation.width * 2,
-                                height: start.height + value.translation.height
-                            ),
-                            true
-                        )
-                    }
-            )
-            .help(locale.identifier.lowercased().hasPrefix("zh") ? "调整面板大小" : "Resize panel")
-            .accessibilityLabel(locale.identifier.lowercased().hasPrefix("zh") ? "调整面板大小" : "Resize panel")
     }
 }
 

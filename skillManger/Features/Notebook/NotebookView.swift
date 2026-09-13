@@ -433,6 +433,8 @@ struct MarkdownEditorPanel: View {
     let imageStore: LocalImageStore
     let editorInteractionState: EditorInteractionState
     let size: CGSize
+    var panelSize: CGSize? = nil
+    var resizePanel: ((CGSize, Bool) -> Void)? = nil
 
     private let toolbarHeight: CGFloat = 38
     private let separatorHeight: CGFloat = 1
@@ -452,7 +454,9 @@ struct MarkdownEditorPanel: View {
 
             MarkdownShortcutToolbar(
                 settingsStore: settingsStore,
-                editorInteractionState: editorInteractionState
+                editorInteractionState: editorInteractionState,
+                panelSize: panelSize,
+                resizePanel: resizePanel
             )
                 .frame(width: size.width, height: toolbarHeight)
                 .background(Color(red: 0.055, green: 0.055, blue: 0.065))
@@ -467,6 +471,8 @@ struct MarkdownEditorPanel: View {
 struct MarkdownShortcutToolbar: View {
     @ObservedObject var settingsStore: NotchWorkspaceSettings
     let editorInteractionState: EditorInteractionState
+    let panelSize: CGSize?
+    let resizePanel: ((CGSize, Bool) -> Void)?
 
     var body: some View {
         HStack(alignment: .center, spacing: 4) {
@@ -489,9 +495,62 @@ struct MarkdownShortcutToolbar: View {
 
             SettingsMenu(settingsStore: settingsStore)
                 .fixedSize()
+
+            if let panelSize, let resizePanel {
+                NotebookResizeHandle(
+                    currentSize: panelSize,
+                    onResize: resizePanel
+                )
+                .fixedSize()
+            }
         }
         .frame(maxHeight: .infinity, alignment: .center)
         .padding(.horizontal, 10)
+    }
+}
+
+private struct NotebookResizeHandle: View {
+    @Environment(\.locale) private var locale
+    let currentSize: CGSize
+    let onResize: (CGSize, Bool) -> Void
+
+    @State private var dragStartSize: CGSize?
+    @State private var isHovering = false
+
+    var body: some View {
+        Image(systemName: "arrow.up.left.and.arrow.down.right")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.white.opacity(isHovering ? 0.82 : 0.58))
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
+            .onHover { isHovering = $0 }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let start = dragStartSize ?? currentSize
+                        if dragStartSize == nil { dragStartSize = start }
+                        onResize(
+                            CGSize(
+                                width: start.width + value.translation.width * 2,
+                                height: start.height + value.translation.height
+                            ),
+                            false
+                        )
+                    }
+                    .onEnded { value in
+                        let start = dragStartSize ?? currentSize
+                        dragStartSize = nil
+                        onResize(
+                            CGSize(
+                                width: start.width + value.translation.width * 2,
+                                height: start.height + value.translation.height
+                            ),
+                            true
+                        )
+                    }
+            )
+            .help(locale.identifier.lowercased().hasPrefix("zh") ? "调整面板大小" : "Resize panel")
+            .accessibilityLabel(locale.identifier.lowercased().hasPrefix("zh") ? "调整面板大小" : "Resize panel")
     }
 }
 

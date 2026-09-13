@@ -7,6 +7,8 @@ struct NotchNotebookPane: View {
     @ObservedObject var fileShelfStore: FileShelfStore
     @ObservedObject var workspaceState: NotebookWorkspaceState
     let editorInteractionState: EditorInteractionState
+    let panelSize: CGSize
+    let resizePanel: (CGSize, Bool) -> Void
 
     var body: some View {
         GeometryReader { proxy in
@@ -23,7 +25,9 @@ struct NotchNotebookPane: View {
                     settingsStore: settingsStore,
                     imageStore: imageStore,
                     editorInteractionState: editorInteractionState,
-                    size: editorSize(in: proxy.size)
+                    size: editorSize(in: proxy.size),
+                    panelSize: panelSize,
+                    resizePanel: resizePanel
                 )
                 .frame(width: proxy.size.width, height: editorSize(in: proxy.size).height)
                 .background(Color(white: 0.055))
