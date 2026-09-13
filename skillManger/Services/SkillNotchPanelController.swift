@@ -7,7 +7,6 @@ final class SkillNotchState: ObservableObject {
     enum Layout {
         static let fallbackClosedSize = CGSize(width: 210, height: 34)
         static let fallbackOpenSize = CGSize(width: 760, height: 620)
-        static let shadowPadding: CGFloat = 24
     }
 
     @Published var isExpanded = false
@@ -16,7 +15,10 @@ final class SkillNotchState: ObservableObject {
 
     var currentSize: CGSize { isExpanded ? openSize : closedSize }
     var windowSize: CGSize {
-        CGSize(width: openSize.width, height: openSize.height + Layout.shadowPadding)
+        CGSize(
+            width: openSize.width + NotchGeometry.expandedShadowHorizontalPadding * 2,
+            height: openSize.height + NotchGeometry.expandedShadowBottomPadding
+        )
     }
 
     func updateLayout(closedSize: CGSize, openSize: CGSize) {
@@ -39,7 +41,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private static let libraryWindowAutosaveName = "SkillManager.LibraryWindow"
 
     private enum Interaction {
-        static let hoverDelay: TimeInterval = 0.42
+        static let hoverDelay: TimeInterval = 1.0
         static let collapseDelay: TimeInterval = 0.08
         static let expandedExitPadding: CGFloat = 8
     }
@@ -47,7 +49,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private let appState: SkillManagerAppState
     private let notchState = SkillNotchState()
     private let compactPanel = SkillNotchPanel()
-    private let expandedPanel = SkillNotchPanel(isResizable: true)
+    private let expandedPanel = SkillNotchPanel()
     private var compactHost: CompactFileDropHostingView<SkillCompactNotchView>?
     private var expandedHost: NSHostingView<SkillNotchView>?
     private var libraryWindowController: NSWindowController?
@@ -56,7 +58,6 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private var hoverWorkItem: DispatchWorkItem?
     private var collapseWorkItem: DispatchWorkItem?
     private var menuTrackingDepth = 0
-    private var activeDisplayID: CGDirectDisplayID?
     private var isApplyingExpandedFrame = false
     private var isResizingExpandedPanel = false
 
@@ -81,7 +82,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
     func showNotch() {
         appState.refreshIfNeeded()
-        activeDisplayID = NotchGeometry.targetScreen()?.displayID
+        appState.notchSettings.triggerMode = .hover
         let layout = currentLayout()
         updateState(for: layout)
         rebuildContent(layout: layout)
@@ -102,9 +103,6 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
     func expand(animated: Bool = true, activate: Bool = false) {
         cancelPendingTransitions()
-        if !notchState.isExpanded, let screen = screen(containing: NSEvent.mouseLocation) {
-            activeDisplayID = screen.displayID
-        }
         let layout = currentLayout()
         updateState(for: layout)
         rebuildContent(layout: layout)
@@ -314,7 +312,6 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         let mouse = NSEvent.mouseLocation
 
         if !notchState.isExpanded {
-            updateCollapsedTargetScreen(for: mouse)
             guard appState.notchSettings.triggerMode == .hover else {
                 hoverWorkItem?.cancel()
                 hoverWorkItem = nil
@@ -448,10 +445,6 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     }
 
     private func repositionForCurrentScreen() {
-        if let currentDisplayID = activeDisplayID,
-           !NSScreen.screens.contains(where: { $0.displayID == currentDisplayID }) {
-            self.activeDisplayID = NotchGeometry.targetScreen()?.displayID
-        }
         let layout = currentLayout()
         updateState(for: layout)
         rebuildContent(layout: layout)
@@ -470,15 +463,18 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         notchState.updateLayout(closedSize: layout.compactSize, openSize: layout.expandedSize)
         let screenFrame = targetFrame()
         expandedPanel.minSize = NSSize(
-            width: NotchGeometry.minimumExpandedSize.width,
-            height: NotchGeometry.minimumExpandedSize.height + SkillNotchState.Layout.shadowPadding
+            width: NotchGeometry.minimumExpandedSize.width + NotchGeometry.expandedShadowHorizontalPadding * 2,
+            height: NotchGeometry.minimumExpandedSize.height + NotchGeometry.expandedShadowBottomPadding
         )
         expandedPanel.maxSize = NSSize(
-            width: max(NotchGeometry.minimumExpandedSize.width, screenFrame.width - 36),
+            width: max(
+                NotchGeometry.minimumExpandedSize.width,
+                screenFrame.width - 36 - NotchGeometry.expandedShadowHorizontalPadding * 2
+            ) + NotchGeometry.expandedShadowHorizontalPadding * 2,
             height: max(
-                NotchGeometry.minimumExpandedSize.height + SkillNotchState.Layout.shadowPadding,
-                screenFrame.height - 72 + SkillNotchState.Layout.shadowPadding
-            )
+                NotchGeometry.minimumExpandedSize.height,
+                screenFrame.height - 72 - NotchGeometry.expandedShadowBottomPadding
+            ) + NotchGeometry.expandedShadowBottomPadding
         )
     }
 
@@ -510,24 +506,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     }
 
     private func targetScreen() -> NSScreen? {
-        if let activeDisplayID,
-           let screen = NSScreen.screens.first(where: { $0.displayID == activeDisplayID }) {
-            return screen
-        }
-        return NotchGeometry.targetScreen()
-    }
-
-    private func screen(containing point: NSPoint) -> NSScreen? {
-        NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
-    }
-
-    private func updateCollapsedTargetScreen(for point: NSPoint) {
-        guard let screen = screen(containing: point), screen.displayID != activeDisplayID else { return }
-        activeDisplayID = screen.displayID
-        let layout = currentLayout()
-        updateState(for: layout)
-        rebuildContent(layout: layout)
-        compactPanel.setFrame(compactFrame(for: layout), display: true)
+        NotchGeometry.targetScreen()
     }
 
     private func applyExpandedFrame(_ frame: NSRect, display: Bool) {
@@ -557,8 +536,11 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
               !isApplyingExpandedFrame else { return }
         notchState.updateOpenSize(
             NSSize(
-                width: window.frame.width,
-                height: max(1, window.frame.height - SkillNotchState.Layout.shadowPadding)
+                width: max(
+                    1,
+                    window.frame.width - NotchGeometry.expandedShadowHorizontalPadding * 2
+                ),
+                height: max(1, window.frame.height - NotchGeometry.expandedShadowBottomPadding)
             )
         )
     }
@@ -567,8 +549,8 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         guard let window = notification.object as? NSWindow, window === expandedPanel else { return }
         let size = NotchGeometry.clampedExpandedSize(
             NSSize(
-                width: window.frame.width,
-                height: window.frame.height - SkillNotchState.Layout.shadowPadding
+                width: window.frame.width - NotchGeometry.expandedShadowHorizontalPadding * 2,
+                height: window.frame.height - NotchGeometry.expandedShadowBottomPadding
             ),
             in: targetFrame()
         )
@@ -583,14 +565,10 @@ final class SkillNotchPanel: NSPanel {
     var onEscape: (() -> Void)?
     var onMouseEvent: ((NSEvent) -> Void)?
 
-    convenience init(isResizable: Bool = false) {
-        var styleMask: NSWindow.StyleMask = [.borderless, .fullSizeContentView]
-        if isResizable {
-            styleMask.insert(.resizable)
-        }
+    convenience init() {
         self.init(
             contentRect: .zero,
-            styleMask: styleMask,
+            styleMask: .borderless,
             backing: .buffered,
             defer: false
         )

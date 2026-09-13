@@ -50,8 +50,8 @@ struct SkillNotchView: View {
                     currentSize: notchState.openSize,
                     onResize: resizePanel
                 )
-                .padding(.trailing, 10)
-                .padding(.bottom, SkillNotchState.Layout.shadowPadding + 8)
+                .padding(.trailing, NotchGeometry.expandedShadowHorizontalPadding + 10)
+                .padding(.bottom, NotchGeometry.expandedShadowBottomPadding + 8)
             }
         }
     }
@@ -72,9 +72,14 @@ struct SkillNotchView: View {
             shape
                 .fill(.black)
                 .shadow(
-                    color: .black.opacity(notchState.isExpanded ? 0.42 : 0.18),
-                    radius: notchState.isExpanded ? 18 : 7,
-                    y: notchState.isExpanded ? 9 : 3
+                    color: .black.opacity(notchState.isExpanded ? 0.20 : 0.14),
+                    radius: notchState.isExpanded ? 26 : 7,
+                    y: notchState.isExpanded ? 12 : 3
+                )
+                .shadow(
+                    color: .black.opacity(notchState.isExpanded ? 0.10 : 0.06),
+                    radius: notchState.isExpanded ? 9 : 3,
+                    y: notchState.isExpanded ? 4 : 1
                 )
         }
         .contentShape(shape)
@@ -520,44 +525,14 @@ struct SkillCompactNotchView: View {
     let onExpand: () -> Void
     let onDropFiles: ([URL]) -> Bool
 
-    @State private var isHovering = false
-
     var body: some View {
-        HStack(spacing: 9) {
-            Image(systemName: "sparkle.magnifyingglass")
-                .font(.system(size: 12, weight: .bold))
-
-            Text("skills")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-
-            Text("\(store.standaloneSkills.count)")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(.black)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(.white.opacity(0.88), in: Capsule())
-
-            if settings.triggerMode == .click, isHovering {
-                Image(systemName: "cursorarrow.click.2")
-                    .font(.system(size: 10, weight: .semibold))
-                    .transition(.opacity)
-            }
-        }
-        .foregroundStyle(.white.opacity(0.90))
+        Color.clear
         .frame(width: size.width, height: size.height)
-        .background(.black)
-        .clipShape(SkillNotchShape(topCornerRadius: 4, bottomCornerRadius: 14))
-        .overlay {
-            SkillNotchShape(topCornerRadius: 4, bottomCornerRadius: 14)
-                .stroke(.white.opacity(0.07), lineWidth: 1)
-        }
         .contentShape(Rectangle())
         .onTapGesture(perform: onExpand)
-        .onHover { isHovering = $0 }
         .dropDestination(for: URL.self) { urls, _ in
             _ = onDropFiles(urls)
         }
-        .animation(.easeOut(duration: 0.12), value: isHovering)
     }
 }
 

@@ -45,6 +45,8 @@ extension NSScreen {
 enum NotchGeometry {
     static let fileDropTargetExtension: CGFloat = 28
     static let minimumExpandedSize = NSSize(width: 560, height: 440)
+    static let expandedShadowHorizontalPadding: CGFloat = 32
+    static let expandedShadowBottomPadding: CGFloat = 44
 
     static func targetScreen() -> NSScreen? {
         NSScreen.screens.first(where: \.isBuiltInDisplay)
@@ -80,16 +82,18 @@ enum NotchGeometry {
     }
 
     static func clampedExpandedSize(_ size: NSSize, in screenFrame: NSRect) -> NSSize {
-        let maximumWidth = max(minimumExpandedSize.width, screenFrame.width - 36)
-        let maximumHeight = max(minimumExpandedSize.height, screenFrame.height - 72)
+        let maximumWidth = max(
+            minimumExpandedSize.width,
+            screenFrame.width - 36 - expandedShadowHorizontalPadding * 2
+        )
+        let maximumHeight = max(
+            minimumExpandedSize.height,
+            screenFrame.height - 72 - expandedShadowBottomPadding
+        )
         return NSSize(
             width: min(max(size.width, minimumExpandedSize.width), maximumWidth),
             height: min(max(size.height, minimumExpandedSize.height), maximumHeight)
         )
-    }
-
-    static func screenFrame(containing point: NSPoint, from frames: [NSRect]) -> NSRect? {
-        frames.first { NSMouseInRect(point, $0, false) }
     }
 
     static func activationFrame(for layout: NotchLayout, in screenFrame: NSRect) -> NSRect {
