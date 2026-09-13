@@ -290,7 +290,7 @@ private struct NotchSkillRow: View {
 
             Label(skill.origin.title(locale: locale), systemImage: skill.origin.systemImage)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(skill.origin == .official ? Color.cyan : Color.white.opacity(0.62))
+                .foregroundStyle(skill.origin == .selfCreated ? Color.cyan : Color.white.opacity(0.62))
                 .labelStyle(.iconOnly)
                 .padding(6)
                 .background(.white.opacity(0.10), in: Circle())

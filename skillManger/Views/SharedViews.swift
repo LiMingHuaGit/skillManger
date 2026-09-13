@@ -124,12 +124,37 @@ struct OriginBadge: View {
             .font(.caption2.weight(.medium))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(origin == .official ? SkillManagerTheme.accent : Color.secondary)
+            .foregroundStyle(originColor)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .background((origin == .official ? SkillManagerTheme.accent : Color.secondary).opacity(0.09), in: Capsule())
+            .background(originColor.opacity(0.09), in: Capsule())
             .help(origin.title(locale: locale))
             .accessibilityLabel(origin.title(locale: locale))
+    }
+
+    private var originColor: Color {
+        switch origin {
+        case .system: .orange
+        case .thirdPartyInstalled: .indigo
+        case .selfCreated: SkillManagerTheme.accent
+        }
+    }
+}
+
+struct SkillGroupBadge: View {
+    let group: String
+
+    var body: some View {
+        Label(group, systemImage: "square.stack.3d.up")
+            .font(.caption2.weight(.medium))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(SkillManagerTheme.quietFill, in: Capsule())
+            .help(group)
+            .accessibilityLabel(group)
     }
 }
 
@@ -184,7 +209,6 @@ struct SkillRowView: View {
                         .accessibilityLabel(String(localized: "Favorite"))
                 }
                 Spacer(minLength: 8)
-                SourceBadge(sourceType: skill.sourceType)
             }
 
             Text(skill.description)
@@ -195,6 +219,9 @@ struct SkillRowView: View {
             HStack(spacing: 6) {
                 HealthBadge(status: skill.healthStatus)
                 OriginBadge(origin: skill.origin, compact: true)
+                if let group = skill.group {
+                    SkillGroupBadge(group: group)
+                }
                 CategoryBadge(category: skill.category, compact: true)
             }
         }
@@ -224,7 +251,6 @@ struct RecommendedSkillRowView: View {
                 Label("\(Int(recommendation.score.rounded()))", systemImage: "sparkles")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(SkillManagerTheme.accent)
-                SourceBadge(sourceType: recommendation.skill.sourceType)
             }
 
             Text(recommendation.skill.description)
@@ -234,6 +260,9 @@ struct RecommendedSkillRowView: View {
 
             HStack(spacing: 6) {
                 OriginBadge(origin: recommendation.skill.origin, compact: true)
+                if let group = recommendation.skill.group {
+                    SkillGroupBadge(group: group)
+                }
                 CategoryBadge(category: recommendation.skill.category, compact: true)
                 Text(L10n.string("Matched", locale: locale))
                     .font(.caption.weight(.medium))

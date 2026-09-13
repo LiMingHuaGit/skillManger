@@ -115,6 +115,7 @@ struct SkillIndexer {
         let description = frontMatter["description"]?.nilIfBlank ?? firstMeaningfulParagraph(in: contents) ?? String(localized: "No description provided.")
         let health: SkillHealthStatus = frontMatter["name"] == nil || frontMatter["description"] == nil ? .missingMetadata : .healthy
         let modifiedAt = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? indexedAt
+        let provenance = parseProvenance(for: fileURL)
 
         return Skill(
             id: fileURL.path,
@@ -124,7 +125,8 @@ struct SkillIndexer {
             sourcePath: fileURL.path,
             pluginURI: pluginURI(for: fileURL),
             rootPath: rootURL.path,
-            tags: tags(for: name, description: description, rootURL: rootURL),
+            tags: tags(for: name, description: description),
+            provenance: provenance,
             lastModifiedAt: modifiedAt,
             lastIndexedAt: indexedAt,
             healthStatus: health,
@@ -142,7 +144,8 @@ struct SkillIndexer {
             sourcePath: fileURL.path,
             pluginURI: pluginURI(for: fileURL),
             rootPath: rootURL.path,
-            tags: [sourceType(for: rootURL, fileURL: fileURL).rawValue],
+            tags: [],
+            provenance: parseProvenance(for: fileURL),
             lastModifiedAt: indexedAt,
             lastIndexedAt: indexedAt,
             healthStatus: health,
@@ -164,6 +167,42 @@ struct SkillIndexer {
             values[key] = value.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
         }
         return values
+    }
+
+    private func parseProvenance(for skillFileURL: URL) -> SkillProvenance? {
+        let directoryURL = skillFileURL.deletingLastPathComponent()
+        let sourceURL = ["SOURCE.md", "source.md", "souce.md"]
+            .map(directoryURL.appendingPathComponent)
+            .first { fileManager.fileExists(atPath: $0.path) }
+        guard let sourceURL,
+              let contents = try? String(contentsOf: sourceURL, encoding: .utf8) else {
+            return nil
+        }
+
+        var fields: [String: String] = [:]
+        for line in contents.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.hasPrefix("- "), let colon = trimmed.firstIndex(of: ":") else { continue }
+            let keyStart = trimmed.index(trimmed.startIndex, offsetBy: 2)
+            let key = trimmed[keyStart..<colon].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let value = trimmed[trimmed.index(after: colon)...]
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "`\"'"))
+            if value.isEmpty == false {
+                fields[key] = value
+            }
+        }
+
+        guard let origin = fields["origin"] else { return nil }
+        return SkillProvenance(
+            origin: origin,
+            group: fields["group"]?.nilIfBlank,
+            groupPrefix: fields["group prefix"]?.nilIfBlank,
+            creator: fields["creator"]?.nilIfBlank,
+            authorMetadata: fields["author metadata"]?.nilIfBlank,
+            repository: fields["repository"]?.nilIfBlank,
+            sourceFilePath: sourceURL.path
+        )
     }
 
     private func firstMeaningfulParagraph(in contents: String) -> String? {
@@ -221,13 +260,12 @@ struct SkillIndexer {
         return "plugin://\(components[pluginsIndex + 1])"
     }
 
-    private func tags(for name: String, description skillDescription: String, rootURL: URL) -> [String] {
+    private func tags(for name: String, description skillDescription: String) -> [String] {
         var tags = Set<String>()
-        tags.insert(sourceType(for: rootURL, fileURL: rootURL).rawValue)
         let searchableText = "\(name) \(skillDescription)".lowercased()
         for tokenSlice in searchableText.split(whereSeparator: { !$0.isLetter && !$0.isNumber }) {
             let token = String(tokenSlice)
-            if ["swiftui", "ios", "debug", "design", "frontend", "local", "dependency", "testing"].contains(token) {
+            if ["swiftui", "ios", "debug", "design", "frontend", "dependency", "testing"].contains(token) {
                 tags.insert(token)
             }
         }

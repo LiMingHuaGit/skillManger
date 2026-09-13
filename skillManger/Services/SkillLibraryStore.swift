@@ -91,6 +91,8 @@ final class SkillLibraryStore: ObservableObject {
     }
     @Published var searchText: String = ""
     @Published var selectedCategory: SkillCategory?
+    @Published var selectedOrigin: SkillOrigin?
+    @Published var selectedGroup: String?
     @Published var selectedFilter: SkillLibraryFilter = .all
     @Published var sortMode: SkillSortMode = .relevance
     @Published var selectedSkillID: Skill.ID?
@@ -187,8 +189,6 @@ final class SkillLibraryStore: ObservableObject {
         case .recent:
             let recent = Set(recentSkillIDs)
             candidates = candidates.filter { recent.contains($0.id) }
-        case .local:
-            candidates = candidates.filter { $0.sourceType == .local }
         case .needsReview:
             candidates = candidates.filter(\.isNeedsReview)
         }
@@ -197,6 +197,12 @@ final class SkillLibraryStore: ObservableObject {
 
         if let selectedCategory {
             candidates = candidates.filter { $0.category == selectedCategory }
+        }
+        if let selectedOrigin {
+            candidates = candidates.filter { $0.origin == selectedOrigin }
+        }
+        if let selectedGroup {
+            candidates = candidates.filter { $0.group == selectedGroup }
         }
 
         let sortedCandidates = selectedFilter == .recommended
@@ -208,7 +214,7 @@ final class SkillLibraryStore: ObservableObject {
             startedAt: startedAt,
             logger: PerformanceDiagnostics.library,
             itemCount: result.count,
-            details: "source=\(skills.count) filter=\(selectedFilter.rawValue) search=\(!query.isEmpty) category=\(selectedCategory?.rawValue ?? "all")",
+            details: "source=\(skills.count) filter=\(selectedFilter.rawValue) search=\(!query.isEmpty) category=\(selectedCategory?.rawValue ?? "all") origin=\(selectedOrigin?.rawValue ?? "all") group=\(selectedGroup ?? "all")",
             slowThresholdMS: 12
         )
         return result
@@ -225,6 +231,11 @@ final class SkillLibraryStore: ObservableObject {
             slowThresholdMS: 12
         )
         return result
+    }
+
+    var availableGroups: [String] {
+        Array(Set(visibleSkillCandidates.compactMap(\.group)))
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     var selectedCodexSession: CodexSessionContext? {
@@ -425,8 +436,14 @@ final class SkillLibraryStore: ObservableObject {
         skillRecommendations.first { $0.skill.id == skillID }
     }
 
-    func matchesSearchAndCategory(_ skill: Skill) -> Bool {
+    func matchesActiveFilters(_ skill: Skill) -> Bool {
         if let selectedCategory, skill.category != selectedCategory {
+            return false
+        }
+        if let selectedOrigin, skill.origin != selectedOrigin {
+            return false
+        }
+        if let selectedGroup, skill.group != selectedGroup {
             return false
         }
 

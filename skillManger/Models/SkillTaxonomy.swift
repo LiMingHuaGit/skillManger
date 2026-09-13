@@ -8,8 +8,9 @@
 import Foundation
 
 enum SkillOrigin: String, CaseIterable, Identifiable {
-    case official
-    case userInstalled
+    case system
+    case thirdPartyInstalled
+    case selfCreated
 
     var id: String { rawValue }
 
@@ -19,31 +20,36 @@ enum SkillOrigin: String, CaseIterable, Identifiable {
 
     func compactTitle(locale: Locale) -> String {
         switch self {
-        case .official:
-            localized(locale: locale, english: "Official", chinese: "官方")
-        case .userInstalled:
-            localized(locale: locale, english: "User", chinese: "用户")
+        case .system:
+            localized(locale: locale, english: "System", chinese: "系统")
+        case .thirdPartyInstalled:
+            localized(locale: locale, english: "Third-party", chinese: "第三方")
+        case .selfCreated:
+            localized(locale: locale, english: "Self-created", chinese: "自建")
         }
     }
 
     var systemImage: String {
         switch self {
-        case .official: "checkmark.seal.fill"
-        case .userInstalled: "person.crop.circle.badge.checkmark"
+        case .system: "gearshape.2.fill"
+        case .thirdPartyInstalled: "shippingbox.fill"
+        case .selfCreated: "person.crop.circle.badge.plus"
         }
     }
 
     fileprivate var englishTitle: String {
         switch self {
-        case .official: "Official"
-        case .userInstalled: "User installed"
+        case .system: "System"
+        case .thirdPartyInstalled: "Third-party installed"
+        case .selfCreated: "Self-created"
         }
     }
 
     fileprivate var chineseTitle: String {
         switch self {
-        case .official: "官方内置"
-        case .userInstalled: "用户安装"
+        case .system: "系统"
+        case .thirdPartyInstalled: "第三方安装"
+        case .selfCreated: "自建"
         }
     }
 }
@@ -133,18 +139,24 @@ enum SkillClassifier {
     }()
 
     static func origin(for skill: Skill) -> SkillOrigin {
-        let path = skill.sourcePath.lowercased()
-        let officialPathMarkers = [
-            "/.codex/skills/.system/",
-            "/plugins/cache/openai-api-curated/",
-            "/plugins/cache/openai-curated/",
-            "/plugins/cache/openai-bundled/"
-        ]
-
-        if skill.sourceType == .system || officialPathMarkers.contains(where: path.contains) {
-            return .official
+        if let recordedOrigin = skill.provenance?.origin.lowercased() {
+            if recordedOrigin.contains("system") {
+                return .system
+            }
+            if recordedOrigin.contains("user-created") ||
+                recordedOrigin.contains("user created") ||
+                recordedOrigin.contains("self-created") ||
+                recordedOrigin.contains("self created") {
+                return .selfCreated
+            }
+            return .thirdPartyInstalled
         }
-        return .userInstalled
+
+        let path = skill.sourcePath.lowercased()
+        if skill.sourceType == .system || path.contains("/.codex/skills/.system/") {
+            return .system
+        }
+        return .thirdPartyInstalled
     }
 
     static func category(for skill: Skill) -> SkillCategory {
@@ -179,8 +191,12 @@ enum SkillClassifier {
             origin.chineseTitle,
             category.rawValue,
             category.englishTitle,
-            category.chineseTitle
-        ]
+            category.chineseTitle,
+            skill.provenance?.origin ?? "",
+            skill.provenance?.group ?? "",
+            skill.provenance?.creator ?? "",
+            skill.provenance?.repository ?? ""
+        ].filter { $0.isEmpty == false }
     }
 
     private static func score(for category: SkillCategory, text: String, tokens: Set<String>) -> Int {
@@ -278,6 +294,17 @@ extension Skill {
     var category: SkillCategory {
         SkillClassifier.category(for: self)
     }
+
+    var group: String? {
+        skillGroupValue(provenance?.group)
+    }
+}
+
+private func skillGroupValue(_ value: String?) -> String? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.isEmpty == false, trimmed.lowercased() != "unknown" else { return nil }
+    return trimmed
 }
 
 private func localized(locale: Locale, english: String, chinese: String) -> String {

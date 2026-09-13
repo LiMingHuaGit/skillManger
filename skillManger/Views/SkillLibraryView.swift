@@ -256,6 +256,25 @@ struct SkillLibraryView: View {
             }
 
             HStack(spacing: 8) {
+                Picker(originPickerTitle, selection: $store.selectedOrigin) {
+                    Text(allOriginsTitle).tag(nil as SkillOrigin?)
+                    ForEach(SkillOrigin.allCases) { origin in
+                        Label(origin.title(locale: languageSettings.locale), systemImage: origin.systemImage)
+                            .tag(Optional(origin))
+                    }
+                }
+                .frame(width: 156)
+
+                Picker(groupPickerTitle, selection: $store.selectedGroup) {
+                    Text(allGroupsTitle).tag(nil as String?)
+                    ForEach(store.availableGroups, id: \.self) { group in
+                        Text(group).tag(Optional(group))
+                    }
+                }
+                .frame(maxWidth: 190)
+            }
+
+            HStack(spacing: 8) {
                 Picker(categoryPickerTitle, selection: $store.selectedCategory) {
                     Text(allCategoriesTitle).tag(nil as SkillCategory?)
                     ForEach(SkillCategory.allCases) { category in
@@ -493,11 +512,7 @@ struct SkillLibraryView: View {
     }
 
     private func filtered(_ skills: [Skill]) -> [Skill] {
-        store.searchResults(
-            in: skills.filter { skill in
-                store.selectedCategory == nil || skill.category == store.selectedCategory
-            }
-        )
+        store.searchResults(in: skills.filter { store.matchesActiveFilters($0) })
     }
 
     private var categoryPickerTitle: String {
@@ -506,6 +521,22 @@ struct SkillLibraryView: View {
 
     private var allCategoriesTitle: String {
         languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "全部分类" : "All Categories"
+    }
+
+    private var originPickerTitle: String {
+        languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "来源" : "Origin"
+    }
+
+    private var allOriginsTitle: String {
+        languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "全部来源" : "All Origins"
+    }
+
+    private var groupPickerTitle: String {
+        languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "Skill 组" : "Skill Group"
+    }
+
+    private var allGroupsTitle: String {
+        languageSettings.locale.identifier.lowercased().hasPrefix("zh") ? "全部 Skill 组" : "All Skill Groups"
     }
 
     private var filterPickerTitle: String {

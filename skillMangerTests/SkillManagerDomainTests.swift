@@ -63,6 +63,7 @@ struct SkillManagerDomainTests {
         #expect(skills.count == 2)
         #expect(skills.first { $0.name == "local-dependency-manager" }?.description == "Prefer local zsh dependencies for shell work.")
         #expect(skills.first { $0.name == "plain-skill" }?.description == "Use when a skill file has no front matter but still has a meaningful paragraph.")
+        #expect(skills.allSatisfy { $0.tags.contains("local") == false })
         #expect(skills.first { $0.name == "local-dependency-manager" }?.healthStatus == .healthy)
         #expect(skills.first { $0.name == "plain-skill" }?.healthStatus == .missingMetadata)
     }
@@ -78,7 +79,7 @@ struct SkillManagerDomainTests {
         #expect(skills.allSatisfy { $0.healthStatus == .duplicateName })
     }
 
-    @Test func classifierIdentifiesOfficialAndInstalledSkills() throws {
+    @Test func classifierIdentifiesSystemThirdPartyAndSelfCreatedSkills() throws {
         let systemSkill = Skill.fixture(
             name: "skill-creator",
             description: "Create Codex skills.",
@@ -98,9 +99,76 @@ struct SkillManagerDomainTests {
             sourcePath: "/Users/ming/.codex/skills/local-dependency-manager/SKILL.md"
         )
 
-        #expect(systemSkill.origin == .official)
-        #expect(curatedSkill.origin == .official)
-        #expect(installedSkill.origin == .userInstalled)
+        let selfCreated = Skill.fixture(
+            name: "ming-helper",
+            description: "A local helper.",
+            sourceType: .local,
+            provenance: SkillProvenance(
+                origin: "User-created local skill",
+                group: "ming-local-skills",
+                groupPrefix: "ming-",
+                creator: "Ming",
+                authorMetadata: nil,
+                repository: "Not imported from GitHub",
+                sourceFilePath: "/tmp/ming-helper/SOURCE.md"
+            )
+        )
+
+        #expect(systemSkill.origin == .system)
+        #expect(curatedSkill.origin == .thirdPartyInstalled)
+        #expect(installedSkill.origin == .thirdPartyInstalled)
+        #expect(selfCreated.origin == .selfCreated)
+        #expect(selfCreated.group == "ming-local-skills")
+    }
+
+    @Test func skillIndexerReadsSourceMetadata() throws {
+        let root = try TemporarySkillRoot()
+        try root.writeSkill(folder: "lark-doc", contents: "---\nname: lark-doc\ndescription: Manage Feishu documents.\n---\n")
+        try root.writeSource(
+            folder: "lark-doc",
+            contents: """
+            # Source
+
+            - Skill: lark-doc
+            - Origin: Third-party skill
+            - Group: lark-skill-suite
+            - Group prefix: lark-
+            - Repository: Unknown from installed files
+            """
+        )
+
+        let skill = try #require(SkillIndexer().index(rootURLs: [root.url]).first)
+
+        #expect(skill.provenance?.origin == "Third-party skill")
+        #expect(skill.origin == .thirdPartyInstalled)
+        #expect(skill.group == "lark-skill-suite")
+        #expect(skill.provenance?.groupPrefix == "lark-")
+        #expect(skill.provenance?.sourceFilePath.hasSuffix("lark-doc/SOURCE.md") == true)
+    }
+
+    @Test func storeFiltersSkillsBySourceOriginAndGroup() throws {
+        let system = Skill.fixture(name: "skill-creator", description: "Create skills.", sourceType: .system)
+        let lark = Skill.fixture(
+            name: "lark-doc",
+            description: "Manage Feishu documents.",
+            sourceType: .local,
+            provenance: .fixture(origin: "Third-party skill", group: "lark-skill-suite")
+        )
+        let local = Skill.fixture(
+            name: "ming-helper",
+            description: "Local helper.",
+            sourceType: .local,
+            provenance: .fixture(origin: "User-created local skill", group: "ming-local-skills")
+        )
+        let store = SkillLibraryStore(preferences: InMemorySkillPreferences(), initialSkills: [system, lark, local])
+
+        store.selectedOrigin = .thirdPartyInstalled
+        #expect(store.visibleSkills.map(\.name) == ["lark-doc"])
+
+        store.selectedOrigin = nil
+        store.selectedGroup = "ming-local-skills"
+        #expect(store.visibleSkills.map(\.name) == ["ming-helper"])
+        #expect(store.availableGroups == ["lark-skill-suite", "ming-local-skills"])
     }
 
     @Test func classifierCategorizesSkillsByWeightedKeywords() throws {
@@ -519,7 +587,8 @@ private extension Skill {
         description: String,
         sourceType: SkillSourceType,
         sourcePath: String? = nil,
-        tags: [String]? = nil
+        tags: [String]? = nil,
+        provenance: SkillProvenance? = nil
     ) -> Skill {
         Skill(
             id: name,
@@ -530,10 +599,25 @@ private extension Skill {
             pluginURI: sourceType == .plugin ? "plugin://example/\(name)" : nil,
             rootPath: "/tmp",
             tags: tags ?? [sourceType.rawValue],
+            provenance: provenance,
             lastModifiedAt: Date(timeIntervalSince1970: 1_784_000_000),
             lastIndexedAt: Date(timeIntervalSince1970: 1_784_021_600),
             healthStatus: .healthy,
             excerpt: description
+        )
+    }
+}
+
+private extension SkillProvenance {
+    static func fixture(origin: String, group: String? = nil) -> SkillProvenance {
+        SkillProvenance(
+            origin: origin,
+            group: group,
+            groupPrefix: nil,
+            creator: nil,
+            authorMetadata: nil,
+            repository: nil,
+            sourceFilePath: "/tmp/SOURCE.md"
         )
     }
 }
@@ -552,6 +636,12 @@ private final class TemporarySkillRoot {
         let skillDirectory = url.appendingPathComponent(folder, isDirectory: true)
         try FileManager.default.createDirectory(at: skillDirectory, withIntermediateDirectories: true)
         try contents.write(to: skillDirectory.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+    }
+
+    func writeSource(folder: String, contents: String) throws {
+        let skillDirectory = url.appendingPathComponent(folder, isDirectory: true)
+        try FileManager.default.createDirectory(at: skillDirectory, withIntermediateDirectories: true)
+        try contents.write(to: skillDirectory.appendingPathComponent("SOURCE.md"), atomically: true, encoding: .utf8)
     }
 
     func writeCodexConfig(_ contents: String) throws -> URL {

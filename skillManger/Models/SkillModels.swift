@@ -64,6 +64,7 @@ struct Skill: Identifiable, Codable, Hashable {
     var pluginURI: String?
     var rootPath: String
     var tags: [String]
+    var provenance: SkillProvenance? = nil
     var lastModifiedAt: Date
     var lastIndexedAt: Date
     var healthStatus: SkillHealthStatus
@@ -76,6 +77,16 @@ struct Skill: Identifiable, Codable, Hashable {
     var isNeedsReview: Bool {
         healthStatus.needsReview
     }
+}
+
+struct SkillProvenance: Codable, Hashable {
+    var origin: String
+    var group: String?
+    var groupPrefix: String?
+    var creator: String?
+    var authorMetadata: String?
+    var repository: String?
+    var sourceFilePath: String
 }
 
 struct PluginPackage: Identifiable, Hashable {
@@ -97,7 +108,6 @@ enum SkillLibraryFilter: String, CaseIterable, Identifiable {
     case recommended
     case favorites
     case recent
-    case local
     case needsReview
 
     var id: String { rawValue }
@@ -108,7 +118,6 @@ enum SkillLibraryFilter: String, CaseIterable, Identifiable {
         case .recommended: "Recommended"
         case .favorites: "Favorites"
         case .recent: "Recent"
-        case .local: "Local"
         case .needsReview: "Needs Review"
         }
     }

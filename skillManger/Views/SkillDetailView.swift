@@ -108,8 +108,10 @@ struct SkillDetailView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 7) {
-                    SourceBadge(sourceType: skill.sourceType)
                     OriginBadge(origin: skill.origin)
+                    if let group = skill.group {
+                        SkillGroupBadge(group: group)
+                    }
                     CategoryBadge(category: skill.category)
                     HealthBadge(status: skill.healthStatus)
                     ForEach(skill.tags.prefix(4), id: \.self) { tag in
@@ -193,6 +195,16 @@ struct SkillDetailView: View {
             PanelSectionTitle(title: "Details", systemImage: "info.circle")
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
                 GridRow { Text("Source").foregroundStyle(.secondary); Text(L10n.string(skill.sourceType.localizationKey, locale: locale)) }
+                GridRow { Text(originLabel).foregroundStyle(.secondary); Text(skill.origin.title(locale: locale)) }
+                if let group = skill.group {
+                    GridRow { Text(groupLabel).foregroundStyle(.secondary); Text(group).textSelection(.enabled) }
+                }
+                if let repository = skill.provenance?.repository {
+                    GridRow { Text(repositoryLabel).foregroundStyle(.secondary); Text(repository).textSelection(.enabled) }
+                }
+                if let sourceFilePath = skill.provenance?.sourceFilePath {
+                    GridRow { Text(sourceRecordLabel).foregroundStyle(.secondary); Text(sourceFilePath).font(.system(.callout, design: .monospaced)).textSelection(.enabled) }
+                }
                 GridRow { Text("Path").foregroundStyle(.secondary); Text(skill.sourcePath).font(.system(.callout, design: .monospaced)).textSelection(.enabled) }
                 GridRow { Text("Indexed").foregroundStyle(.secondary); Text(skill.lastIndexedAt, style: .relative) }
                 GridRow { Text("Modified").foregroundStyle(.secondary); Text(skill.lastModifiedAt, style: .date) }
@@ -345,6 +357,10 @@ struct SkillDetailView: View {
     private var confirmButtonTitle: String { isChinese ? "确定" : "OK" }
     private var deletionFailedTitle: String { isChinese ? "删除失败" : "Deletion Failed" }
     private var skillDeletedMessage: String { isChinese ? "Skill 已删除" : "Skill deleted" }
+    private var originLabel: String { isChinese ? "来源" : "Origin" }
+    private var groupLabel: String { isChinese ? "Skill 组" : "Skill Group" }
+    private var repositoryLabel: String { isChinese ? "仓库" : "Repository" }
+    private var sourceRecordLabel: String { isChinese ? "来源记录" : "Source Record" }
 
     private func deleteTitle(for skill: Skill) -> String {
         isChinese ? "删除“\(skill.name)”？" : "Delete “\(skill.name)”?"
