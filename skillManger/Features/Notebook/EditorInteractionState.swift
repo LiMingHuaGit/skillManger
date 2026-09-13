@@ -207,7 +207,7 @@ final class EditorInteractionState: ObservableObject {
             object: textView,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 guard let self, let range = self.currentSelectionRange() else { return }
                 self.onSelectionChange?(range)
             }
