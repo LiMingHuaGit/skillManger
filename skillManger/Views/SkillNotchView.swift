@@ -13,6 +13,13 @@ struct SkillNotchView: View {
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
     @ObservedObject var notchState: SkillNotchState
+    @ObservedObject var navigation: NotchWorkspaceNavigation
+    @ObservedObject var noteStore: NoteStore
+    @ObservedObject var notchSettings: NotchWorkspaceSettings
+    let imageStore: LocalImageStore
+    @ObservedObject var fileShelfStore: FileShelfStore
+    @ObservedObject var notebookWorkspaceState: NotebookWorkspaceState
+    let editorInteractionState: EditorInteractionState
 
     let openLibrary: () -> Void
     let refresh: () -> Void
@@ -28,8 +35,8 @@ struct SkillNotchView: View {
             notchSurface
         }
         .frame(
-            width: SkillNotchState.Layout.windowSize.width,
-            height: SkillNotchState.Layout.windowSize.height,
+            width: notchState.windowSize.width,
+            height: notchState.windowSize.height,
             alignment: .top
         )
         .preferredColorScheme(.dark)
@@ -98,8 +105,39 @@ struct SkillNotchView: View {
     }
 
     private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             header
+            workspacePicker
+
+            Group {
+                switch navigation.selection {
+                case .skills:
+                    skillsWorkspace
+                case .notes:
+                    NotchNotebookPane(
+                        store: noteStore,
+                        settingsStore: notchSettings,
+                        imageStore: imageStore,
+                        fileShelfStore: fileShelfStore,
+                        workspaceState: notebookWorkspaceState,
+                        editorInteractionState: editorInteractionState
+                    )
+                case .shelf:
+                    NotchFileShelfPane(
+                        store: fileShelfStore,
+                        workspaceState: notebookWorkspaceState
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .padding(.top, 16)
+        .padding(.horizontal, 18)
+        .padding(.bottom, 16)
+    }
+
+    private var skillsWorkspace: some View {
+        VStack(spacing: 12) {
             searchBar
 
             if filteredSkills.isEmpty {
@@ -116,9 +154,6 @@ struct SkillNotchView: View {
                 skillResults
             }
         }
-        .padding(.top, 16)
-        .padding(.horizontal, 18)
-        .padding(.bottom, 16)
     }
 
     private var skillResults: some View {
@@ -142,10 +177,12 @@ struct SkillNotchView: View {
     private var header: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(L10n.string("Skill Quick Access", locale: locale))
+                Text(navigation.selection == .skills
+                     ? L10n.string("Skill Quick Access", locale: locale)
+                     : navigation.selection.title(locale: locale))
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
-                summaryView
+                workspaceSummary
             }
 
             Spacer()
@@ -161,6 +198,29 @@ struct SkillNotchView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .help(L10n.string("Re-index", locale: locale))
+            .opacity(navigation.selection == .skills ? 1 : 0)
+            .disabled(navigation.selection != .skills)
+
+            Menu {
+                Picker("Trigger", selection: $notchSettings.triggerMode) {
+                    ForEach(NotchTriggerMode.allCases) { mode in
+                        Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
+                    }
+                }
+            } label: {
+                Image(systemName: notchSettings.triggerMode.systemImage)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .help(notchTriggerHelp)
+
+            Button {
+                notchSettings.toggleKeepAwake()
+            } label: {
+                Image(systemName: notchSettings.isKeepingAwake ? "cup.and.saucer.fill" : "cup.and.saucer")
+            }
+            .disabled(notchSettings.isChangingKeepAwake)
+            .help(notchSettings.isKeepingAwake ? "Stop keeping Mac awake" : "Keep Mac awake")
 
             Button(action: openLibrary) {
                 Image(systemName: "rectangle.grid.2x2")
@@ -174,6 +234,43 @@ struct SkillNotchView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.white.opacity(0.72))
+        .alert(
+            "Couldn’t Keep Mac Awake",
+            isPresented: Binding(
+                get: { notchSettings.keepAwakeErrorMessage != nil },
+                set: { if !$0 { notchSettings.dismissKeepAwakeError() } }
+            )
+        ) {
+            Button("OK") { notchSettings.dismissKeepAwakeError() }
+        } message: {
+            Text(notchSettings.keepAwakeErrorMessage ?? "")
+        }
+    }
+
+    private var workspacePicker: some View {
+        HStack(spacing: 4) {
+            ForEach(NotchWorkspaceSection.allCases) { section in
+                Button {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        navigation.selection = section
+                    }
+                } label: {
+                    Label(section.title(locale: locale), systemImage: section.systemImage)
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(navigation.selection == section ? Color.black : Color.white.opacity(0.62))
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(navigation.selection == section ? Color.white.opacity(0.92) : Color.clear)
+                )
+            }
+        }
+        .padding(3)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private var searchBar: some View {
@@ -219,6 +316,34 @@ struct SkillNotchView: View {
             .foregroundStyle(.white.opacity(0.52))
             .lineLimit(1)
         }
+    }
+
+    @ViewBuilder
+    private var workspaceSummary: some View {
+        switch navigation.selection {
+        case .skills:
+            summaryView
+        case .notes:
+            Text(locale.identifier.lowercased().hasPrefix("zh")
+                 ? "\(noteStore.tabs.count) 个标签页 · \(noteStore.title(for: noteStore.activeTabID))"
+                 : "\(noteStore.tabs.count) tabs · \(noteStore.title(for: noteStore.activeTabID))")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.52))
+                .lineLimit(1)
+        case .shelf:
+            Text(locale.identifier.lowercased().hasPrefix("zh")
+                 ? "\(fileShelfStore.items.count) 个暂存文件"
+                 : "\(fileShelfStore.items.count) shelf items")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.52))
+        }
+    }
+
+    private var notchTriggerHelp: String {
+        if locale.identifier.lowercased().hasPrefix("zh") {
+            return "通过\(notchSettings.triggerMode.title(locale: locale))打开"
+        }
+        return "Open by \(notchSettings.triggerMode.title.lowercased())"
     }
 
     private var librarySummary: String {
@@ -322,6 +447,54 @@ private struct NotchSkillRow: View {
     }
 }
 
+struct SkillCompactNotchView: View {
+    @ObservedObject var store: SkillLibraryStore
+    @ObservedObject var settings: NotchWorkspaceSettings
+    let size: CGSize
+    let onExpand: () -> Void
+    let onDropFiles: ([URL]) -> Bool
+
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "sparkle.magnifyingglass")
+                .font(.system(size: 12, weight: .bold))
+
+            Text("skills")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+
+            Text("\(store.standaloneSkills.count)")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.white.opacity(0.88), in: Capsule())
+
+            if settings.triggerMode == .click, isHovering {
+                Image(systemName: "cursorarrow.click.2")
+                    .font(.system(size: 10, weight: .semibold))
+                    .transition(.opacity)
+            }
+        }
+        .foregroundStyle(.white.opacity(0.90))
+        .frame(width: size.width, height: size.height)
+        .background(.black)
+        .clipShape(SkillNotchShape(topCornerRadius: 4, bottomCornerRadius: 14))
+        .overlay {
+            SkillNotchShape(topCornerRadius: 4, bottomCornerRadius: 14)
+                .stroke(.white.opacity(0.07), lineWidth: 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onExpand)
+        .onHover { isHovering = $0 }
+        .dropDestination(for: URL.self) { urls, _ in
+            _ = onDropFiles(urls)
+        }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+}
+
 struct SkillNotchShape: Shape {
     var topCornerRadius: CGFloat
     var bottomCornerRadius: CGFloat
@@ -366,6 +539,13 @@ struct SkillNotchShape: Shape {
         store: SkillLibraryStore(initialSkills: []),
         languageSettings: AppLanguageSettings(),
         notchState: SkillNotchState(),
+        navigation: NotchWorkspaceNavigation(),
+        noteStore: NoteStore(),
+        notchSettings: NotchWorkspaceSettings(),
+        imageStore: LocalImageStore(),
+        fileShelfStore: FileShelfStore(),
+        notebookWorkspaceState: NotebookWorkspaceState(),
+        editorInteractionState: EditorInteractionState(),
         openLibrary: {},
         refresh: {}
     )

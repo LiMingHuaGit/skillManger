@@ -14,11 +14,25 @@ final class SkillManagerAppState: ObservableObject {
     let store: SkillLibraryStore
     let languageSettings: AppLanguageSettings
     let launchAtLoginSettings: LaunchAtLoginSettings
+    let noteStore: NoteStore
+    let notchSettings: NotchWorkspaceSettings
+    let imageStore: LocalImageStore
+    let fileShelfStore: FileShelfStore
+    let notebookWorkspaceState: NotebookWorkspaceState
+    let editorInteractionState: EditorInteractionState
+    let notchNavigation: NotchWorkspaceNavigation
 
     private init() {
         store = SkillLibraryStore()
         languageSettings = AppLanguageSettings()
         launchAtLoginSettings = LaunchAtLoginSettings()
+        noteStore = NoteStore()
+        notchSettings = NotchWorkspaceSettings()
+        imageStore = LocalImageStore()
+        fileShelfStore = FileShelfStore()
+        notebookWorkspaceState = NotebookWorkspaceState()
+        editorInteractionState = EditorInteractionState()
+        notchNavigation = NotchWorkspaceNavigation()
     }
 
     @MainActor

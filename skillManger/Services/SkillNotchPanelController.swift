@@ -1,47 +1,32 @@
-//
-//  SkillNotchPanelController.swift
-//  skillManger
-//
-//  Created by Codex on 2026/8/24.
-//
-
 import AppKit
 import Combine
-import QuartzCore
 import SwiftUI
 
 @MainActor
 final class SkillNotchState: ObservableObject {
     enum Layout {
-        static let fallbackClosedSize = CGSize(width: 286, height: 38)
-        static let openSize = CGSize(width: 720, height: 382)
+        static let fallbackClosedSize = CGSize(width: 210, height: 34)
+        static let fallbackOpenSize = CGSize(width: 760, height: 620)
         static let shadowPadding: CGFloat = 24
-        static let windowSize = CGSize(width: openSize.width, height: openSize.height + shadowPadding)
     }
 
     @Published var isExpanded = false
     @Published private(set) var closedSize = Layout.fallbackClosedSize
+    @Published private(set) var openSize = Layout.fallbackOpenSize
 
-    var currentSize: CGSize {
-        isExpanded ? Self.Layout.openSize : closedSize
+    var currentSize: CGSize { isExpanded ? openSize : closedSize }
+    var windowSize: CGSize {
+        CGSize(width: openSize.width, height: openSize.height + Layout.shadowPadding)
     }
 
-    func updateClosedSize(_ size: CGSize) {
-        guard closedSize != size else { return }
-        closedSize = size
+    func updateLayout(closedSize: CGSize, openSize: CGSize) {
+        if self.closedSize != closedSize { self.closedSize = closedSize }
+        if self.openSize != openSize { self.openSize = openSize }
     }
 
-    func expand() {
-        isExpanded = true
-    }
-
-    func collapse() {
-        isExpanded = false
-    }
-
-    func toggle() {
-        isExpanded.toggle()
-    }
+    func expand() { isExpanded = true }
+    func collapse() { isExpanded = false }
+    func toggle() { isExpanded.toggle() }
 }
 
 @MainActor
@@ -49,96 +34,124 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     static let shared = SkillNotchPanelController(appState: .shared)
     private static let libraryWindowAutosaveName = "SkillManager.LibraryWindow"
 
-    private let appState: SkillManagerAppState
-    private let notchState = SkillNotchState()
-    private var notchWindow: SkillNotchPanel?
-    private var libraryWindowController: NSWindowController?
-    private var activeScreen: NSScreen?
-    private var globalMouseMonitor: Any?
-    private var localMouseMonitor: Any?
-    private var expandTask: Task<Void, Never>?
-    private var collapseTask: Task<Void, Never>?
-    private var cancellables: Set<AnyCancellable> = []
-
-    private enum HoverBehavior {
-        static let expandDelay: Duration = .milliseconds(1_000)
-        static let collapseDelay: Duration = .milliseconds(150)
-        static let closedTriggerPadding: CGFloat = 3
+    private enum Interaction {
+        static let hoverDelay: TimeInterval = 0.42
+        static let collapseDelay: TimeInterval = 0.08
         static let expandedExitPadding: CGFloat = 8
     }
+
+    private let appState: SkillManagerAppState
+    private let notchState = SkillNotchState()
+    private let compactPanel = SkillNotchPanel()
+    private let expandedPanel = SkillNotchPanel()
+    private var compactHost: CompactFileDropHostingView<SkillCompactNotchView>?
+    private var expandedHost: NSHostingView<SkillNotchView>?
+    private var libraryWindowController: NSWindowController?
+    private var mousePollingTimer: Timer?
+    private var globalMouseDownMonitor: Any?
+    private var hoverWorkItem: DispatchWorkItem?
+    private var collapseWorkItem: DispatchWorkItem?
+    private var menuTrackingDepth = 0
 
     init(appState: SkillManagerAppState) {
         self.appState = appState
         super.init()
-
-        notchState.$isExpanded
-            .dropFirst()
-            .sink { [weak self] _ in
-                self?.updateNotchFrame(animated: true)
-            }
-            .store(in: &cancellables)
-
-        NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor [weak self] in
-                self?.activeScreen = self?.targetScreen()
-                self?.updateNotchFrame(animated: false)
-            }
-        }
+        configure(compactPanel)
+        configure(expandedPanel)
+        observeScreenChanges()
+        observeMenuTracking()
+        observeOutsideClicks()
+        observePanelEvents()
+        startMousePolling()
     }
 
     deinit {
-        expandTask?.cancel()
-        collapseTask?.cancel()
-        if let globalMouseMonitor {
-            NSEvent.removeMonitor(globalMouseMonitor)
-        }
-        if let localMouseMonitor {
-            NSEvent.removeMonitor(localMouseMonitor)
-        }
+        mousePollingTimer?.invalidate()
+        if let globalMouseDownMonitor { NSEvent.removeMonitor(globalMouseDownMonitor) }
+        NotificationCenter.default.removeObserver(self)
     }
 
     func showNotch() {
         appState.refreshIfNeeded()
-        let screen = activeScreen ?? targetScreen()
-        activeScreen = screen
-        notchState.updateClosedSize(closedSize(for: screen))
+        let layout = currentLayout()
+        updateState(for: layout)
+        rebuildContent(layout: layout)
 
-        if notchWindow == nil {
-            let window = SkillNotchPanel(
-                contentRect: frame(for: SkillNotchState.Layout.windowSize, on: screen),
-                styleMask: [.borderless, .utilityWindow],
-                backing: .buffered,
-                defer: false
-            )
-            window.ignoresMouseEvents = true
-            window.onMouseExited = { [weak self] in
-                self?.scheduleCollapseIfNeeded()
-            }
-            window.contentView = ClearHostingView(
-                rootView: SkillNotchView(
-                    store: appState.store,
-                    languageSettings: appState.languageSettings,
-                    notchState: notchState,
-                    openLibrary: { [weak self] in self?.showLibraryWindow() },
-                    refresh: { [weak self] in self?.refreshLibrary() }
-                )
-            )
-            notchWindow = window
-            installMouseMonitors()
-        }
-
-        updateNotchFrame(animated: false)
-        notchWindow?.orderFrontRegardless()
+        notchState.isExpanded = false
+        compactPanel.setFrame(compactFrame(for: layout), display: true)
+        expandedPanel.setFrame(expandedFrame(for: layout), display: true)
+        expandedPanel.orderOut(nil)
+        compactPanel.orderFrontRegardless()
+        appState.notchSettings.recoverSleepAfterLaunchIfNeeded()
     }
 
     func hideNotch() {
-        cancelPendingExpansion()
-        collapseTask?.cancel()
-        notchWindow?.orderOut(nil)
+        cancelPendingTransitions()
+        compactPanel.orderOut(nil)
+        expandedPanel.orderOut(nil)
+    }
+
+    func expand(animated: Bool = true, activate: Bool = false) {
+        cancelPendingTransitions()
+        let layout = currentLayout()
+        updateState(for: layout)
+        rebuildContent(layout: layout)
+        expandedPanel.setFrame(expandedFrame(for: layout), display: true)
+        expandedPanel.allowsKeyActivation = activate
+
+        if activate {
+            NSApp.activate(ignoringOtherApps: true)
+            expandedPanel.makeKeyAndOrderFront(nil)
+        } else {
+            expandedPanel.orderFrontRegardless()
+        }
+        compactPanel.orderOut(nil)
+
+        if animated {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                notchState.expand()
+            }
+        } else {
+            notchState.expand()
+        }
+
+        if activate, appState.notchNavigation.selection == .notes {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) { [weak self] in
+                guard let self, self.notchState.isExpanded else { return }
+                self.appState.editorInteractionState.requestFocus(searchingIn: self.expandedHost)
+            }
+        }
+    }
+
+    func collapse(animated: Bool = true) {
+        guard notchState.isExpanded else { return }
+        cancelPendingTransitions()
+        rememberEditorSelection()
+
+        if animated {
+            withAnimation(.easeOut(duration: 0.16)) {
+                notchState.collapse()
+            }
+        } else {
+            notchState.collapse()
+        }
+
+        let delay = animated ? 0.17 : 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, !self.notchState.isExpanded else { return }
+            let layout = self.currentLayout()
+            self.expandedPanel.orderOut(nil)
+            self.expandedPanel.allowsKeyActivation = false
+            self.compactPanel.setFrame(self.compactFrame(for: layout), display: true)
+            self.compactPanel.orderFrontRegardless()
+        }
+    }
+
+    func createNote() {
+        rememberEditorSelection()
+        appState.noteStore.addTab()
+        appState.notchNavigation.selection = .notes
+        expand(animated: true, activate: true)
     }
 
     func showLibraryWindow() {
@@ -162,9 +175,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
                     launchAtLoginSettings: appState.launchAtLoginSettings
                 )
             )
-            if window.setFrameUsingName(Self.libraryWindowAutosaveName) == false {
-                window.center()
-            }
+            if !window.setFrameUsingName(Self.libraryWindowAutosaveName) { window.center() }
             window.setFrameAutosaveName(Self.libraryWindowAutosaveName)
             libraryWindowController = NSWindowController(window: window)
         }
@@ -176,9 +187,8 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        guard let closingWindow = notification.object as? NSWindow,
-              closingWindow === libraryWindowController?.window else { return }
-
+        guard let window = notification.object as? NSWindow,
+              window === libraryWindowController?.window else { return }
         NSApp.setActivationPolicy(.accessory)
     }
 
@@ -186,207 +196,336 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         try? appState.store.refresh()
     }
 
-    private func updateNotchFrame(animated: Bool) {
-        guard let window = notchWindow else { return }
-        let screen = activeScreen ?? targetScreen()
-        activeScreen = screen
-        notchState.updateClosedSize(closedSize(for: screen))
-        let newFrame = frame(for: SkillNotchState.Layout.windowSize, on: screen).integral
-        window.ignoresMouseEvents = notchState.isExpanded == false
+    func flush() {
+        rememberEditorSelection()
+        appState.noteStore.flush()
+        appState.notchSettings.stopKeepingAwake()
+    }
 
-        if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.24
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(newFrame, display: true)
-            }
+    private func configure(_ panel: SkillNotchPanel) {
+        panel.appearance = NSAppearance(named: .darkAqua)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.hidesOnDeactivate = false
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        panel.isMovable = false
+        panel.isReleasedWhenClosed = false
+        panel.animationBehavior = .none
+        panel.acceptsMouseMovedEvents = true
+        panel.onEscape = { [weak self] in self?.collapse(animated: true) }
+    }
+
+    private func rebuildContent(layout: NotchLayout) {
+        let compactView = SkillCompactNotchView(
+            store: appState.store,
+            settings: appState.notchSettings,
+            size: layout.compactSize,
+            onExpand: { [weak self] in self?.expand(animated: true, activate: true) },
+            onDropFiles: { [weak self] urls in self?.receiveDroppedFiles(urls) ?? false }
+        )
+        let expandedView = SkillNotchView(
+            store: appState.store,
+            languageSettings: appState.languageSettings,
+            notchState: notchState,
+            navigation: appState.notchNavigation,
+            noteStore: appState.noteStore,
+            notchSettings: appState.notchSettings,
+            imageStore: appState.imageStore,
+            fileShelfStore: appState.fileShelfStore,
+            notebookWorkspaceState: appState.notebookWorkspaceState,
+            editorInteractionState: appState.editorInteractionState,
+            openLibrary: { [weak self] in self?.showLibraryWindow() },
+            refresh: { [weak self] in self?.refreshLibrary() }
+        )
+
+        if let compactHost {
+            compactHost.rootView = compactView
+            configureCompactDrop(compactHost)
         } else {
-            window.setFrame(newFrame, display: true)
-        }
-        window.contentView?.setFrameSize(newFrame.size)
-    }
-
-    private func installMouseMonitors() {
-        guard globalMouseMonitor == nil, localMouseMonitor == nil else { return }
-
-        let events: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleMouseMoved()
-            }
+            let host = CompactFileDropHostingView(rootView: compactView)
+            host.frame = NSRect(origin: .zero, size: layout.compactSize)
+            host.autoresizingMask = [.width, .height]
+            configureCompactDrop(host)
+            compactPanel.contentView = host
+            compactHost = host
         }
 
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
-            Task { @MainActor in
-                self?.handleMouseMoved()
-            }
-            return event
+        if let expandedHost {
+            expandedHost.rootView = expandedView
+        } else {
+            let host = SkillFirstMouseHostingView(rootView: expandedView)
+            host.frame = NSRect(origin: .zero, size: notchState.windowSize)
+            host.autoresizingMask = [.width, .height]
+            expandedPanel.contentView = host
+            expandedHost = host
         }
     }
 
-    private func handleMouseMoved() {
-        if notchState.isExpanded == false {
-            if isMouseInsideVisibleNotch(padding: HoverBehavior.closedTriggerPadding) {
-                scheduleExpansionIfNeeded()
+    private func receiveDroppedFiles(_ urls: [URL]) -> Bool {
+        let accepted = appState.fileShelfStore.acceptDrop(urls)
+        guard accepted else { return false }
+        appState.notchNavigation.selection = .shelf
+        expand(animated: true, activate: false)
+        return true
+    }
+
+    private func configureCompactDrop(_ host: CompactFileDropHostingView<SkillCompactNotchView>) {
+        host.onFilesDropped = { [weak self] urls in
+            self?.receiveDroppedFiles(urls) ?? false
+        }
+    }
+
+    private func startMousePolling() {
+        let timer = Timer(
+            timeInterval: 1.0 / 30.0,
+            target: self,
+            selector: #selector(mousePollingTick),
+            userInfo: nil,
+            repeats: true
+        )
+        RunLoop.main.add(timer, forMode: .common)
+        mousePollingTimer = timer
+    }
+
+    @objc private func mousePollingTick() {
+        pollMouseLocation()
+    }
+
+    private func pollMouseLocation() {
+        guard compactPanel.isVisible || expandedPanel.isVisible else { return }
+        let mouse = NSEvent.mouseLocation
+
+        if !notchState.isExpanded {
+            guard appState.notchSettings.triggerMode == .hover else {
+                hoverWorkItem?.cancel()
+                hoverWorkItem = nil
+                return
+            }
+            if activationFrame().contains(mouse) {
+                scheduleHoverExpansion()
             } else {
-                cancelPendingExpansion()
-                notchWindow?.ignoresMouseEvents = true
+                hoverWorkItem?.cancel()
+                hoverWorkItem = nil
             }
             return
         }
 
-        guard notchState.isExpanded else { return }
-        cancelPendingExpansion()
-        notchWindow?.ignoresMouseEvents = false
-
-        if isMouseInsideVisibleNotch(padding: HoverBehavior.expandedExitPadding) {
-            collapseTask?.cancel()
-        } else {
-            scheduleCollapseIfNeeded()
-        }
-    }
-
-    private func scheduleExpansionIfNeeded() {
-        collapseTask?.cancel()
-        guard expandTask == nil, notchState.isExpanded == false else { return }
-
-        expandTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: HoverBehavior.expandDelay)
-            guard !Task.isCancelled, let self else { return }
-            self.expandTask = nil
-            guard self.notchState.isExpanded == false else { return }
-            guard self.isMouseInsideVisibleNotch(padding: HoverBehavior.closedTriggerPadding) else { return }
-            self.notchWindow?.ignoresMouseEvents = false
-            self.notchState.expand()
-        }
-    }
-
-    private func cancelPendingExpansion() {
-        expandTask?.cancel()
-        expandTask = nil
-    }
-
-    private func scheduleCollapseIfNeeded() {
-        collapseTask?.cancel()
-        guard notchState.isExpanded else { return }
-
-        collapseTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: HoverBehavior.collapseDelay)
-            guard !Task.isCancelled, let self else { return }
-            guard self.isMouseInsideVisibleNotch(padding: HoverBehavior.expandedExitPadding) == false else { return }
-            self.notchState.collapse()
-            self.notchWindow?.ignoresMouseEvents = true
-        }
-    }
-
-    private func isMouseInsideVisibleNotch(padding: CGFloat) -> Bool {
-        guard let notchWindow, notchWindow.isVisible else { return false }
-        let visibleSize = notchState.currentSize
-        let frame = notchWindow.frame
-        let visibleFrame = NSRect(
-            x: frame.midX - visibleSize.width / 2,
-            y: frame.maxY - visibleSize.height,
-            width: visibleSize.width,
-            height: visibleSize.height
+        guard appState.notchSettings.triggerMode == .hover,
+              menuTrackingDepth == 0,
+              !appState.editorInteractionState.hasKeyboardFocus() else { return }
+        let interactionFrame = expandedPanel.frame.insetBy(
+            dx: -Interaction.expandedExitPadding,
+            dy: -Interaction.expandedExitPadding
         )
-        return visibleFrame.insetBy(dx: -padding, dy: -padding).contains(NSEvent.mouseLocation)
+        if interactionFrame.contains(mouse) {
+            collapseWorkItem?.cancel()
+            collapseWorkItem = nil
+        } else {
+            scheduleCollapse()
+        }
     }
 
-    private func targetScreen() -> NSScreen? {
-        if let screenWithMouse = NSScreen.screenWithMouse, screenWithMouse.safeAreaInsets.top > 0 {
-            return screenWithMouse
+    private func scheduleHoverExpansion() {
+        guard hoverWorkItem == nil, !notchState.isExpanded else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.hoverWorkItem = nil
+            guard self.activationFrame().contains(NSEvent.mouseLocation) else { return }
+            self.expand(animated: true, activate: false)
         }
-
-        if let notchedScreen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) {
-            return notchedScreen
-        }
-
-        return NSScreen.screenWithMouse ?? NSScreen.main ?? NSScreen.screens.first
+        hoverWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Interaction.hoverDelay, execute: work)
     }
 
-    private func closedSize(for screen: NSScreen?) -> CGSize {
-        guard let screen else { return SkillNotchState.Layout.fallbackClosedSize }
+    private func scheduleCollapse() {
+        guard collapseWorkItem == nil else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.collapseWorkItem = nil
+            guard !self.expandedPanel.frame.insetBy(dx: -8, dy: -8).contains(NSEvent.mouseLocation) else { return }
+            self.collapse(animated: true)
+        }
+        collapseWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Interaction.collapseDelay, execute: work)
+    }
 
-        var width = SkillNotchState.Layout.fallbackClosedSize.width
-        var height = SkillNotchState.Layout.fallbackClosedSize.height
+    private func cancelPendingTransitions() {
+        hoverWorkItem?.cancel()
+        hoverWorkItem = nil
+        collapseWorkItem?.cancel()
+        collapseWorkItem = nil
+    }
 
-        if let leftAreaWidth = screen.auxiliaryTopLeftArea?.width,
-           let rightAreaWidth = screen.auxiliaryTopRightArea?.width {
-            let realNotchWidth = screen.frame.width - leftAreaWidth - rightAreaWidth + 4
-            if realNotchWidth.isFinite, realNotchWidth > 0 {
-                width = realNotchWidth
+    private func observeOutsideClicks() {
+        globalMouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+            [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.notchState.isExpanded else { return }
+                guard !self.expandedPanel.frame.contains(NSEvent.mouseLocation) else { return }
+                self.collapse(animated: true)
             }
         }
-
-        if screen.safeAreaInsets.top > 0 {
-            height = max(28, screen.safeAreaInsets.top)
-        }
-
-        return CGSize(width: width.rounded(), height: height.rounded())
     }
 
-    private func frame(for size: CGSize, on screen: NSScreen?) -> NSRect {
-        let screenFrame = screen?.frame ?? .zero
+    private func observePanelEvents() {
+        expandedPanel.onMouseEvent = { [weak self] event in
+            guard let self, event.type == .leftMouseDown else { return }
+            self.expandedPanel.allowsKeyActivation = true
+            NSApp.activate(ignoringOtherApps: true)
+            self.expandedPanel.makeKeyAndOrderFront(nil)
+        }
+    }
 
-        return NSRect(
-            x: screenFrame.origin.x + (screenFrame.width - size.width) / 2,
-            y: screenFrame.origin.y + screenFrame.height - size.height,
-            width: size.width,
-            height: size.height
+    private func observeScreenChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(screenParametersChanged),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
         )
     }
-}
 
-private extension NSScreen {
-    static var screenWithMouse: NSScreen? {
-        let mouseLocation = NSEvent.mouseLocation
-        return screens.first { NSMouseInRect(mouseLocation, $0.frame, false) }
+    @objc private func screenParametersChanged() {
+        repositionForCurrentScreen()
+    }
+
+    private func observeMenuTracking() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(menuDidBeginTracking),
+            name: NSMenu.didBeginTrackingNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(menuDidEndTracking),
+            name: NSMenu.didEndTrackingNotification,
+            object: nil
+        )
+    }
+
+    @objc private func menuDidBeginTracking() {
+        menuTrackingDepth += 1
+    }
+
+    @objc private func menuDidEndTracking() {
+        menuTrackingDepth = max(0, menuTrackingDepth - 1)
+    }
+
+    private func repositionForCurrentScreen() {
+        let layout = currentLayout()
+        updateState(for: layout)
+        rebuildContent(layout: layout)
+        compactPanel.setFrame(compactFrame(for: layout), display: true)
+        expandedPanel.setFrame(expandedFrame(for: layout), display: true)
+    }
+
+    private func rememberEditorSelection() {
+        if let range = appState.editorInteractionState.currentSelectionRange() {
+            appState.noteStore.updateSelection(for: appState.noteStore.activeTabID, range: range)
+        }
+        appState.noteStore.flush(waitForDisk: false)
+    }
+
+    private func updateState(for layout: NotchLayout) {
+        notchState.updateLayout(closedSize: layout.compactSize, openSize: layout.expandedSize)
+    }
+
+    private func currentLayout() -> NotchLayout {
+        NotchGeometry.layout(for: NotchGeometry.targetScreen())
+    }
+
+    private func targetFrame() -> NSRect {
+        NotchGeometry.targetScreen()?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+    }
+
+    private func compactFrame(for layout: NotchLayout) -> NSRect {
+        NotchGeometry.activationFrame(for: layout, in: targetFrame())
+    }
+
+    private func expandedFrame(for layout: NotchLayout) -> NSRect {
+        NotchGeometry.topCenteredFrame(
+            for: notchState.windowSize,
+            topY: targetFrame().maxY + layout.expandedTopOffset,
+            in: targetFrame()
+        )
+    }
+
+    private func activationFrame() -> NSRect {
+        NotchGeometry.activationFrame(for: currentLayout(), in: targetFrame())
     }
 }
 
 final class SkillNotchPanel: NSPanel {
-    var onMouseExited: (() -> Void)?
+    var allowsKeyActivation = false
+    var onEscape: (() -> Void)?
+    var onMouseEvent: ((NSEvent) -> Void)?
 
-    override init(
-        contentRect: NSRect,
-        styleMask: NSWindow.StyleMask,
-        backing: NSWindow.BackingStoreType,
-        defer flag: Bool
-    ) {
-        super.init(contentRect: contentRect, styleMask: styleMask, backing: backing, defer: flag)
-
-        isFloatingPanel = true
-        isOpaque = false
-        backgroundColor = .clear
-        titleVisibility = .hidden
-        titlebarAppearsTransparent = true
-        isMovable = false
-        hasShadow = false
-        hidesOnDeactivate = false
-        isReleasedWhenClosed = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        level = .mainMenu + 3
+    convenience init() {
+        self.init(
+            contentRect: .zero,
+            styleMask: [.borderless, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
     }
 
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeKey: Bool { allowsKeyActivation }
+    override var canBecomeMain: Bool { allowsKeyActivation }
 
-    override func mouseExited(with event: NSEvent) {
-        super.mouseExited(with: event)
-        onMouseExited?()
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, event.keyCode == 53 {
+            onEscape?()
+            return
+        }
+        if event.type == .leftMouseDown {
+            onMouseEvent?(event)
+        }
+        super.sendEvent(event)
     }
 }
 
-final class ClearHostingView<Content: View>: NSHostingView<Content> {
+class SkillFirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+class TransparentHitHostingView<Content: View>: SkillFirstMouseHostingView<Content> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard bounds.contains(point) else { return nil }
+        return super.hitTest(point) ?? self
+    }
+}
+
+final class CompactFileDropHostingView<Content: View>: TransparentHitHostingView<Content> {
+    var onFilesDropped: (([URL]) -> Bool)?
+
     required init(rootView: Content) {
         super.init(rootView: rootView)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
+        registerForDraggedTypes([.fileURL])
     }
 
-    @MainActor @preconcurrency required dynamic init?(coder: NSCoder) {
-        super.init(coder: coder)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        FileDropPasteboardReader.containsFileURLs(sender.draggingPasteboard) ? .copy : []
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        FileDropPasteboardReader.containsFileURLs(sender.draggingPasteboard) ? .copy : []
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        FileDropPasteboardReader.containsFileURLs(sender.draggingPasteboard)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = FileDropPasteboardReader.fileURLs(from: sender.draggingPasteboard)
+        guard !urls.isEmpty else { return false }
+        return onFilesDropped?(urls) ?? false
     }
 }

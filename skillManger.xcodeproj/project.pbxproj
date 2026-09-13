@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* MarkdownEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000011 /* MarkdownEngine */; };
+		A10000000000000000000002 /* MarkdownEngineCodeBlocks in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000012 /* MarkdownEngineCodeBlocks */; };
+		A10000000000000000000003 /* MarkdownEngineLatex in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000013 /* MarkdownEngineLatex */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		3AD20FE130062B1C0028337F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +58,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000001 /* MarkdownEngine in Frameworks */,
+				A10000000000000000000002 /* MarkdownEngineCodeBlocks in Frameworks */,
+				A10000000000000000000003 /* MarkdownEngineLatex in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +121,9 @@
 			);
 			name = skillManger;
 			packageProductDependencies = (
+				A10000000000000000000011 /* MarkdownEngine */,
+				A10000000000000000000012 /* MarkdownEngineCodeBlocks */,
+				A10000000000000000000013 /* MarkdownEngineLatex */,
 			);
 			productName = skillManger;
 			productReference = 3AD20FD330062B190028337F /* skillManger.app */;
@@ -198,6 +210,9 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3AD20FD430062B190028337F /* Products */;
+			packageReferences = (
+				A10000000000000000000010 /* XCLocalSwiftPackageReference "Vendor/swift-markdown-engine" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -268,6 +283,31 @@
 			targetProxy = 3AD20FEB30062B1C0028337F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A10000000000000000000010 /* XCLocalSwiftPackageReference "Vendor/swift-markdown-engine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "Vendor/swift-markdown-engine";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A10000000000000000000011 /* MarkdownEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000010 /* XCLocalSwiftPackageReference "Vendor/swift-markdown-engine" */;
+			productName = MarkdownEngine;
+		};
+		A10000000000000000000012 /* MarkdownEngineCodeBlocks */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000010 /* XCLocalSwiftPackageReference "Vendor/swift-markdown-engine" */;
+			productName = MarkdownEngineCodeBlocks;
+		};
+		A10000000000000000000013 /* MarkdownEngineLatex */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000010 /* XCLocalSwiftPackageReference "Vendor/swift-markdown-engine" */;
+			productName = MarkdownEngineLatex;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		3AD20FF230062B1C0028337F /* Debug */ = {

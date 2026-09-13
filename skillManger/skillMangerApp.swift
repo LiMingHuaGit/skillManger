@@ -17,6 +17,19 @@ struct skillMangerApp: App {
     var body: some Scene {
         MenuBarExtra {
             Button {
+                SkillNotchPanelController.shared.createNote()
+            } label: {
+                Label("New Note", systemImage: "square.and.pencil")
+            }
+            .keyboardShortcut("n", modifiers: .command)
+
+            Button {
+                SkillNotchPanelController.shared.expand(animated: true, activate: true)
+            } label: {
+                Label("Show Notch", systemImage: "rectangle.topthird.inset.filled")
+            }
+
+            Button {
                 SkillNotchPanelController.shared.showLibraryWindow()
             } label: {
                 Label(L10n.string("Open Library", locale: languageSettings.locale), systemImage: "rectangle.grid.2x2")
@@ -53,6 +66,41 @@ struct skillMangerApp: App {
         } label: {
             SkillMenuBarLabel()
         }
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("New Note") {
+                    SkillNotchPanelController.shared.createNote()
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
+
+            CommandGroup(after: .textEditing) {
+                Button("Find…") {
+                    FindCommand.perform(.showFindInterface)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Button("Find Next") {
+                    FindCommand.perform(.nextMatch)
+                }
+                .keyboardShortcut("g", modifiers: .command)
+
+                Button("Find Previous") {
+                    FindCommand.perform(.previousMatch)
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+            }
+
+            CommandMenu("Notch") {
+                Button("Show") {
+                    SkillNotchPanelController.shared.expand(animated: true, activate: true)
+                }
+                Button("Hide") {
+                    SkillNotchPanelController.shared.collapse(animated: true)
+                }
+                .keyboardShortcut("w", modifiers: .command)
+            }
+        }
     }
 }
 
@@ -80,5 +128,18 @@ final class SkillManagerAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        SkillNotchPanelController.shared.flush()
+    }
+}
+
+private enum FindCommand {
+    @MainActor
+    static func perform(_ action: NSTextFinder.Action) {
+        let sender = NSMenuItem()
+        sender.tag = action.rawValue
+        NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: sender)
     }
 }
