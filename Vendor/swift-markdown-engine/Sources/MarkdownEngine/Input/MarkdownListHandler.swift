@@ -351,12 +351,11 @@ struct MarkdownLists {
                         newListItem = "\n" + leadingWhitespace + "\(number + 1). "
                     }
                 } else {
-                    let prefixIndent = leadingWhitespace.isEmpty ? "  " : leadingWhitespace
                     if hasCheckbox {
                         let bulletChar = marker.contains("•") ? "•" : "-"
-                        newListItem = "\n" + prefixIndent + "\(bulletChar) [ ] "
+                        newListItem = "\n" + leadingWhitespace + "\(bulletChar) [ ] "
                     } else {
-                        newListItem = "\n" + prefixIndent + marker + " "
+                        newListItem = "\n" + leadingWhitespace + marker + " "
                     }
                 }
                 MarkdownLists.performEdit(textView, replace: affectedCharRange, with: newListItem)
