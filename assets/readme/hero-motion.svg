@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">Skill Manager animated hero source</title>
+  <desc id="desc">Editable SVG source for a GitHub-safe animated hero showing Skill Manager's notch workspace, quick notes, and file shelf.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f7f7f5"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
+      .mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; }
+      .ink { fill: #0b0b0d; }
+      .muted { fill: #67676f; }
+      .rule { stroke: #0b0b0d; stroke-width: 1.2; }
+    </style>
+  </defs>
+
+  <g id="base-frame">
+    <rect width="1200" height="420" fill="#ffffff"/>
+    <rect width="1200" height="420" rx="26" fill="url(#paper)"/>
+    <path d="M0 340 C158 320 216 382 354 354 C484 328 520 258 666 278 C813 298 865 373 1003 342 C1095 321 1135 279 1200 300 L1200 420 L0 420 Z" fill="#dceeb1" opacity="0.78"/>
+    <path d="M858 0 L1200 0 L1200 136 C1137 103 1084 108 1028 76 C977 47 930 18 858 0 Z" fill="#c5b0f4" opacity="0.58"/>
+    <path d="M760 412 C822 360 884 356 938 379 C991 402 1050 394 1114 360 L1200 316 L1200 420 L760 420 Z" fill="#c8e6cd" opacity="0.82"/>
+  </g>
+
+  <g id="title-block" transform="translate(58 52)">
+    <g class="mono" font-size="18" letter-spacing="1.2" fill="#35353b">
+      <text x="0" y="0">NOTCH-STYLE AI WORKSPACE</text>
+      <line x1="0" y1="18" x2="300" y2="18" class="rule"/>
+    </g>
+    <text class="sans ink" x="0" y="88" font-size="64" font-weight="760">Skill Manager</text>
+    <text class="sans ink" x="0" y="136" font-size="30" font-weight="520">Skills, notes, and files</text>
+    <text class="sans ink" x="0" y="174" font-size="30" font-weight="520">one gesture away from the chat.</text>
+    <text class="sans muted" x="0" y="222" font-size="20">A local macOS command shelf for reusable AI skills,</text>
+    <text class="sans muted" x="0" y="250" font-size="20">quick notes, and temporary file staging.</text>
+    <g transform="translate(0 292)">
+      <rect x="0" y="0" width="168" height="34" rx="17" fill="#0b0b0d"/>
+      <text class="sans" x="18" y="23" font-size="18" font-weight="650" fill="#ffffff">Notch workspace</text>
+      <rect x="182" y="0" width="126" height="34" rx="17" fill="#ffffff" stroke="#0b0b0d"/>
+      <text class="sans ink" x="200" y="23" font-size="18" font-weight="650">Quick notes</text>
+      <rect x="322" y="0" width="124" height="34" rx="17" fill="#ffffff" stroke="#0b0b0d"/>
+      <text class="sans ink" x="340" y="23" font-size="18" font-weight="650">File shelf</text>
+    </g>
+  </g>
+
+  <g id="workspace-shell" transform="translate(606 42)" filter="url(#softShadow)">
+    <rect x="55" y="0" width="414" height="38" rx="19" fill="#0b0b0d"/>
+    <text class="mono" x="182" y="25" font-size="18" fill="#ffffff" opacity="0.9">skills | notes | files</text>
+    <circle cx="93" cy="19" r="5" fill="#efd4d4"/>
+    <circle cx="112" cy="19" r="5" fill="#f4ecd6"/>
+    <circle cx="131" cy="19" r="5" fill="#c8e6cd"/>
+    <rect x="0" y="54" width="524" height="278" rx="22" fill="#ffffff" stroke="#d8d8d2"/>
+  </g>
+
+  <g id="skills-card" transform="translate(630 120)">
+    <rect x="0" y="0" width="146" height="218" rx="12" fill="#f7f7f5" stroke="#e5e5df"/>
+    <text class="sans ink" x="16" y="32" font-size="21" font-weight="760">Skills</text>
+    <rect x="16" y="52" width="114" height="38" rx="9" fill="#dceeb1"/>
+    <text class="sans ink" x="28" y="77" font-size="18" font-weight="700">source</text>
+    <rect x="16" y="102" width="114" height="38" rx="9" fill="#c5b0f4" opacity="0.72"/>
+    <text class="sans ink" x="28" y="127" font-size="18" font-weight="700">plugin</text>
+    <rect x="16" y="152" width="114" height="38" rx="9" fill="#f3c9b6" opacity="0.72"/>
+    <text class="sans ink" x="28" y="177" font-size="18" font-weight="700">review</text>
+  </g>
+
+  <g id="notes-card" transform="translate(796 120)">
+    <rect x="0" y="0" width="146" height="218" rx="12" fill="#ffffff" stroke="#e5e5df"/>
+    <text class="sans ink" x="16" y="32" font-size="21" font-weight="760">Notes</text>
+    <g id="note-lines">
+      <line x1="18" y1="62" x2="122" y2="62" stroke="#0f766e" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="90" x2="108" y2="90" stroke="#d0d0ca" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="118" x2="124" y2="118" stroke="#d0d0ca" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="146" x2="92" y2="146" stroke="#d0d0ca" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <rect x="18" y="172" width="86" height="26" rx="13" fill="#0f766e"/>
+    <text class="sans" x="30" y="191" font-size="18" font-weight="700" fill="#ffffff">capture</text>
+  </g>
+
+  <g id="files-card" transform="translate(962 120)">
+    <rect x="0" y="0" width="144" height="218" rx="12" fill="#ffffff" stroke="#e5e5df"/>
+    <text class="sans ink" x="16" y="32" font-size="21" font-weight="760">Files</text>
+    <rect x="18" y="56" width="108" height="32" rx="8" fill="#f1f1ec"/>
+    <text class="mono muted" x="27" y="78" font-size="18">brief.md</text>
+    <rect x="18" y="102" width="108" height="32" rx="8" fill="#f1f1ec"/>
+    <text class="mono muted" x="27" y="124" font-size="18">shot.png</text>
+    <rect x="18" y="148" width="108" height="32" rx="8" fill="#f1f1ec"/>
+    <text class="mono muted" x="27" y="170" font-size="18">log.txt</text>
+    <path id="file-check" d="M92 196 L102 206 L124 182" fill="none" stroke="#0f766e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
