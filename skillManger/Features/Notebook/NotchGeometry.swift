@@ -77,7 +77,7 @@ enum NotchGeometry {
             compactSize: NSSize(width: compactWidth, height: compactHeight),
             expandedSize: expandedSize,
             compactTopOffset: 0,
-            expandedTopOffset: 0
+            expandedTopOffset: 6
         )
     }
 

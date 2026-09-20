@@ -12,6 +12,7 @@ final class DrawerState: ObservableObject {
 }
 
 struct NotebookView: View {
+    @Environment(\.colorScheme) private var systemColorScheme
     @ObservedObject var store: NoteStore
     @ObservedObject var settingsStore: NotchWorkspaceSettings
     let imageStore: LocalImageStore
@@ -38,7 +39,9 @@ struct NotebookView: View {
                     && !workspaceState.isDraggingShelfItem
             }
         }
-        .environment(\.colorScheme, .dark)
+        .environment(\.notchTheme, theme)
+        .environment(\.colorScheme, effectiveColorScheme)
+        .preferredColorScheme(settingsStore.appearanceMode.colorScheme)
     }
 
     private var drawer: some View {
@@ -48,14 +51,14 @@ struct NotebookView: View {
                 .opacity(expandedContentOpacity)
         }
         .frame(width: layout.expandedSize.width, height: layout.expandedSize.height, alignment: .top)
-        .background(Color(red: 0.02, green: 0.02, blue: 0.025).opacity(0.98))
+        .background(theme.panelBackground.opacity(settingsStore.panelOpacity))
         .mask(alignment: .top) {
             TopAttachedRoundedShape(radius: cornerRadius)
                 .frame(width: revealWidth, height: revealHeight)
         }
         .overlay(alignment: .top) {
             TopAttachedRoundedShape(radius: cornerRadius)
-                .stroke(.white.opacity(0.09), lineWidth: 1)
+                .stroke(theme.border, lineWidth: 1)
                 .frame(width: revealWidth, height: revealHeight)
         }
         .contentShape(Rectangle())
@@ -238,6 +241,14 @@ struct NotebookView: View {
         .spring(response: 0.30, dampingFraction: 0.84)
     }
 
+    private var effectiveColorScheme: ColorScheme {
+        settingsStore.appearanceMode.colorScheme ?? systemColorScheme
+    }
+
+    private var theme: NotchThemePalette {
+        NotchThemePalette(colorScheme: effectiveColorScheme)
+    }
+
     private func interpolate(from start: CGFloat, to end: CGFloat) -> CGFloat {
         start + (end - start) * drawerState.revealProgress
     }
@@ -252,6 +263,7 @@ struct NotebookView: View {
 
 private struct SettingsMenu: View {
     @Environment(\.locale) private var locale
+    @Environment(\.notchTheme) private var theme
     @ObservedObject var settingsStore: NotchWorkspaceSettings
     @State private var isHovering = false
 
@@ -282,19 +294,23 @@ private struct SettingsMenu: View {
                     Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
                 }
             }
+
+            Divider()
+
+            NotchAppearanceMenuContent(settingsStore: settingsStore)
         } label: {
             Image(systemName: "gearshape")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(isHovering ? 0.88 : 0.76))
+                .foregroundStyle(theme.primaryText.opacity(isHovering ? 0.92 : 0.78))
                 .frame(width: 28, height: 28)
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(.white.opacity(isHovering ? 0.085 : 0.055))
+                        .fill(isHovering ? theme.strongerFill : theme.subtleFill)
                 )
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .tint(.white.opacity(0.76))
+        .tint(theme.secondaryText)
         .onHover { isHovering = $0 }
         .pointingHandCursor()
         .help("Settings")
@@ -440,6 +456,7 @@ private struct CoffeeSteamCurve: Shape {
 }
 
 struct MarkdownEditorPanel: View {
+    @Environment(\.notchTheme) private var theme
     @ObservedObject var store: NoteStore
     @ObservedObject var settingsStore: NotchWorkspaceSettings
     let imageStore: LocalImageStore
@@ -461,7 +478,7 @@ struct MarkdownEditorPanel: View {
             .frame(width: size.width, height: editorHeight)
 
             Rectangle()
-                .fill(.white.opacity(0.045))
+                .fill(theme.border.opacity(0.55))
                 .frame(width: size.width, height: separatorHeight)
 
             MarkdownShortcutToolbar(
@@ -471,7 +488,7 @@ struct MarkdownEditorPanel: View {
                 resizePanel: resizePanel
             )
                 .frame(width: size.width, height: toolbarHeight)
-                .background(Color(red: 0.055, green: 0.055, blue: 0.065))
+                .background(theme.toolbarBackground.opacity(settingsStore.panelOpacity))
         }
     }
 
@@ -523,6 +540,7 @@ struct MarkdownShortcutToolbar: View {
 
 private struct NotebookResizeHandle: View {
     @Environment(\.locale) private var locale
+    @Environment(\.notchTheme) private var theme
     let currentSize: CGSize
     let onResize: (CGSize, Bool) -> Void
 
@@ -532,7 +550,7 @@ private struct NotebookResizeHandle: View {
     var body: some View {
         Image(systemName: "arrow.up.left.and.arrow.down.right")
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.white.opacity(isHovering ? 0.82 : 0.58))
+            .foregroundStyle(theme.primaryText.opacity(isHovering ? 0.86 : 0.62))
             .frame(width: 28, height: 28)
             .contentShape(Rectangle())
             .onHover { isHovering = $0 }
@@ -595,6 +613,7 @@ struct MarkdownCommandLabel: View {
 }
 
 struct TabPagerControl: View {
+    @Environment(\.notchTheme) private var theme
     @ObservedObject var store: NoteStore
     let editorInteractionState: EditorInteractionState
     let availableWidth: CGFloat
@@ -617,14 +636,14 @@ struct TabPagerControl: View {
                         ZStack {
                             if isSelected {
                                 Circle()
-                                    .fill(Color.white.opacity(0.14))
+                                    .fill(theme.strongerFill)
                                     .frame(width: 14, height: 14)
                             }
 
                             Circle()
-                                .fill(isSelected ? Color.white.opacity(0.92) : Color.white.opacity(0.34))
+                                .fill(isSelected ? theme.primaryText : theme.tertiaryText)
                                 .frame(width: isSelected ? 7 : 6, height: isSelected ? 7 : 6)
-                                .shadow(color: .white.opacity(isSelected ? 0.42 : 0), radius: 3)
+                                .shadow(color: theme.primaryText.opacity(isSelected ? 0.34 : 0), radius: 3)
                         }
                         .frame(width: 26, height: 24)
                         .contentShape(Rectangle())
@@ -797,6 +816,8 @@ struct CompactNotchView: View {
 }
 
 struct MarkdownNoteEditor: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.notchTheme) private var theme
     @ObservedObject var store: NoteStore
     let imageStore: LocalImageStore
     let editorInteractionState: EditorInteractionState
@@ -805,7 +826,8 @@ struct MarkdownNoteEditor: View {
 
     private static let editorServices = MarkdownEditorServices(
         syntaxHighlighter: HighlighterSwiftBridge(
-            autoSwitchAppearance: false,
+            autoSwitchAppearance: true,
+            lightBackground: NSColor(white: 0.94, alpha: 1),
             darkBackground: NSColor(white: 0.10, alpha: 1)
         ),
         latex: SwiftMathBridge()
@@ -834,7 +856,7 @@ struct MarkdownNoteEditor: View {
             if store.text.isEmpty {
                 Text("Start typing…")
                     .font(.system(size: 15))
-                    .foregroundStyle(.white.opacity(0.24))
+                    .foregroundStyle(theme.tertiaryText)
                     .padding(.horizontal, 13)
                     .padding(.vertical, 12)
                     .allowsHitTesting(false)
@@ -848,17 +870,19 @@ struct MarkdownNoteEditor: View {
 
     private var configuration: MarkdownEditorConfiguration {
         let theme = MarkdownEditorTheme(
-            bodyText: NSColor(white: 0.92, alpha: 1),
-            mutedText: NSColor(white: 0.58, alpha: 1),
-            disabledText: NSColor(white: 0.38, alpha: 1),
-            headingMarker: NSColor(white: 0.44, alpha: 1),
+            bodyText: self.theme.editorBodyText,
+            mutedText: self.theme.editorMutedText,
+            disabledText: self.theme.editorDisabledText,
+            headingMarker: self.theme.editorMarkerText,
             link: NSColor.systemBlue,
             incompleteLink: NSColor.systemBlue.withAlphaComponent(0.75),
             findMatchHighlight: NSColor.systemYellow.withAlphaComponent(0.55),
             findCurrentMatchHighlight: NSColor.systemYellow,
-            latexLightModeText: .white,
+            latexLightModeText: .black,
             latexDarkModeText: .white,
-            strikethroughColor: NSColor(white: 0.62, alpha: 1)
+            strikethroughColor: colorScheme == .dark
+                ? NSColor(white: 0.62, alpha: 1)
+                : NSColor(white: 0.38, alpha: 1)
         )
 
         let services = MarkdownEditorServices(
@@ -988,6 +1012,7 @@ struct MarkdownToolbarButtonStyle: ButtonStyle {
 }
 
 private struct RoundedHoverButtonBody: View {
+    @Environment(\.notchTheme) private var theme
     let configuration: ButtonStyle.Configuration
     let font: Font?
     let normalOpacity: CGFloat
@@ -1026,14 +1051,14 @@ private struct RoundedHoverButtonBody: View {
     var body: some View {
         configuration.label
             .font(font)
-            .foregroundStyle(.white.opacity(currentForegroundOpacity))
+            .foregroundStyle(theme.primaryText.opacity(currentForegroundOpacity))
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(.white.opacity(currentBackgroundOpacity))
+                    .fill(theme.primaryText.opacity(currentBackgroundOpacity))
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(.white.opacity(strokeOpacity), lineWidth: 1)
+                    .stroke(theme.primaryText.opacity(strokeOpacity), lineWidth: 1)
             }
             .animation(.easeOut(duration: 0.10), value: isHovering)
             .animation(.easeOut(duration: 0.08), value: configuration.isPressed)

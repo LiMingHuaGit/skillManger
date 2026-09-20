@@ -229,7 +229,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     }
 
     private func configure(_ panel: SkillNotchPanel) {
-        panel.appearance = NSAppearance(named: .darkAqua)
+        panel.appearance = nil
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false

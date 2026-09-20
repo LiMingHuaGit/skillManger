@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct NotchNotebookPane: View {
+    @Environment(\.notchTheme) private var theme
     @ObservedObject var store: NoteStore
     @ObservedObject var settingsStore: NotchWorkspaceSettings
     let imageStore: LocalImageStore
@@ -30,7 +31,7 @@ struct NotchNotebookPane: View {
                     resizePanel: resizePanel
                 )
                 .frame(width: proxy.size.width, height: editorSize(in: proxy.size).height)
-                .background(Color(white: 0.055))
+                .background(theme.editorBackground.opacity(settingsStore.panelOpacity))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 if showsShelf {
@@ -78,6 +79,7 @@ struct NotchNotebookPane: View {
 
 struct NotchFileShelfPane: View {
     @Environment(\.locale) private var locale
+    @Environment(\.notchTheme) private var theme
     @ObservedObject var store: FileShelfStore
     @ObservedObject var workspaceState: NotebookWorkspaceState
     @ObservedObject var settingsStore: NotchWorkspaceSettings
@@ -93,9 +95,9 @@ struct NotchFileShelfPane: View {
                             .font(.callout.weight(.semibold))
                         Text(shelfDescription)
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.42))
+                            .foregroundStyle(theme.tertiaryText)
                     }
-                    .foregroundStyle(.white.opacity(0.66))
+                    .foregroundStyle(theme.secondaryText)
                 }
 
                 FileShelfView(

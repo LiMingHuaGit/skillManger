@@ -13,6 +13,7 @@ struct SettingsView: View {
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
     @ObservedObject var launchAtLoginSettings: LaunchAtLoginSettings
+    @ObservedObject var notchSettings: NotchWorkspaceSettings
     @State private var customTemplateName: String = String(localized: "Custom Platform")
 
     var body: some View {
@@ -20,6 +21,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 24) {
                 languageSection
                 launchSection
+                notchSection
                 rootsSection
                 templatesSection
             }
@@ -29,6 +31,31 @@ struct SettingsView: View {
         }
         .background(SkillManagerTheme.canvas)
         .navigationTitle("Settings")
+    }
+
+    private var notchSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            PanelSectionTitle(title: notchSectionTitle, systemImage: "rectangle.topthird.inset.filled")
+
+            Picker(themePickerTitle, selection: $notchSettings.appearanceMode) {
+                ForEach(NotchAppearanceMode.allCases) { mode in
+                    Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            HStack(spacing: 12) {
+                Label(opacityTitle, systemImage: "circle.lefthalf.filled")
+                    .frame(width: 104, alignment: .leading)
+                Slider(value: $notchSettings.panelOpacity, in: 0.60...1.0, step: 0.05)
+                Text(opacityPercent)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 48, alignment: .trailing)
+            }
+        }
+        .padding(16)
+        .panelSurface(emphasized: true)
     }
 
     private var languageSection: some View {
@@ -184,6 +211,22 @@ struct SettingsView: View {
                 store.roots.append(root)
             }
         }
+    }
+
+    private var notchSectionTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "Notch 弹窗" : "Notch panel"
+    }
+
+    private var themePickerTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "主题" : "Theme"
+    }
+
+    private var opacityTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "透明度" : "Opacity"
+    }
+
+    private var opacityPercent: String {
+        "\(Int((notchSettings.panelOpacity * 100).rounded()))%"
     }
 }
 

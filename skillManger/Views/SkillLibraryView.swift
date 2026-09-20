@@ -47,6 +47,7 @@ struct SkillLibraryView: View {
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
     @ObservedObject var launchAtLoginSettings: LaunchAtLoginSettings
+    @ObservedObject var notchSettings: NotchWorkspaceSettings
     @State private var selectedSection: LibrarySection = .library
     @State private var selectedPluginID: PluginPackage.ID?
 
@@ -82,7 +83,12 @@ struct SkillLibraryView: View {
             .frame(minWidth: 190)
         } content: {
             if selectedSection == .settings {
-                SettingsView(store: store, languageSettings: languageSettings, launchAtLoginSettings: launchAtLoginSettings)
+                SettingsView(
+                    store: store,
+                    languageSettings: languageSettings,
+                    launchAtLoginSettings: launchAtLoginSettings,
+                    notchSettings: notchSettings
+                )
             } else if selectedSection == .plugins {
                 pluginList
             } else {

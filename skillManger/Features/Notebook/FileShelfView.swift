@@ -6,6 +6,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct FileShelfView: View {
+    @Environment(\.notchTheme) private var theme
     @ObservedObject var store: FileShelfStore
     @ObservedObject var workspaceState: NotebookWorkspaceState
     @ObservedObject var settingsStore: NotchWorkspaceSettings
@@ -51,10 +52,10 @@ struct FileShelfView: View {
                selectionRect.width >= 3,
                selectionRect.height >= 3 {
                 Rectangle()
-                    .fill(Color.white.opacity(0.055))
+                    .fill(Color.accentColor.opacity(0.10))
                     .overlay {
                         Rectangle()
-                            .stroke(Color.white.opacity(0.34), lineWidth: 1)
+                            .stroke(Color.accentColor.opacity(0.52), lineWidth: 1)
                     }
                     .frame(width: selectionRect.width, height: selectionRect.height)
                     .offset(x: selectionRect.minX, y: selectionRect.minY)
@@ -66,17 +67,21 @@ struct FileShelfView: View {
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.white.opacity(workspaceState.isShelfDropTargeted ? 0.055 : 0.025))
+                .fill(
+                    workspaceState.isShelfDropTargeted
+                        ? Color.accentColor.opacity(0.09)
+                        : theme.subtleFill.opacity(settingsStore.panelOpacity)
+                )
         )
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(
-                    .white.opacity(workspaceState.isShelfDropTargeted ? 0.16 : 0),
+                    Color.accentColor.opacity(workspaceState.isShelfDropTargeted ? 0.28 : 0),
                     lineWidth: 1
                 )
         }
         .shadow(
-            color: .black.opacity(workspaceState.isShelfDropTargeted ? 0.24 : 0),
+            color: theme.shadow.opacity(workspaceState.isShelfDropTargeted ? 0.7 : 0),
             radius: 18,
             y: 8
         )
@@ -124,7 +129,7 @@ struct FileShelfView: View {
             Text("Release to add")
                 .font(.system(size: 10, weight: .semibold))
         }
-        .foregroundStyle(Color.white.opacity(0.58))
+        .foregroundStyle(theme.secondaryText)
     }
 
     private var shelfItems: some View {
@@ -373,6 +378,7 @@ private final class FileShelfMarqueeNSView: NSView {
 }
 
 private struct FileShelfChip: View {
+    @Environment(\.notchTheme) private var theme
     let item: FileShelfItem
     @ObservedObject var store: FileShelfStore
     @ObservedObject var workspaceState: NotebookWorkspaceState
@@ -450,9 +456,9 @@ private struct FileShelfChip: View {
                 Text(displayName)
                     .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(
-                        .white.opacity(
-                            isAvailable ? (isSelected ? 0.92 : 0.66) : 0.34
-                        )
+                        isAvailable
+                            ? (isSelected ? theme.primaryText : theme.secondaryText)
+                            : theme.tertiaryText
                     )
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -477,14 +483,14 @@ private struct FileShelfChip: View {
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(
-                    .white.opacity(
-                        isSelected ? 0.12 : (isHovering ? 0.065 : 0)
-                    )
+                    isSelected
+                        ? Color.accentColor.opacity(0.17)
+                        : (isHovering ? theme.subtleFill : Color.clear)
                 )
         )
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(.white.opacity(isSelected ? 0.20 : 0), lineWidth: 1)
+                .stroke(Color.accentColor.opacity(isSelected ? 0.38 : 0), lineWidth: 1)
         }
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .animation(.easeOut(duration: 0.13), value: isHovering)
@@ -527,7 +533,7 @@ private struct FileShelfChip: View {
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(.white.opacity(0.12), lineWidth: 0.5)
+                        .stroke(theme.border, lineWidth: 0.5)
                 }
         } else {
             Image(nsImage: fileIcon)
@@ -974,12 +980,18 @@ private enum FileShelfThumbnailLoader {
 
 private struct ShelfRemoveButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        ShelfRemoveButtonBody(configuration: configuration)
+    }
+}
+
+private struct ShelfRemoveButtonBody: View {
+    @Environment(\.notchTheme) private var theme
+    let configuration: ButtonStyle.Configuration
+
+    var body: some View {
         configuration.label
-            .foregroundStyle(.white.opacity(configuration.isPressed ? 0.58 : 0.82))
-            .background(
-                Circle()
-                    .fill(.black.opacity(configuration.isPressed ? 0.72 : 0.58))
-            )
+            .foregroundStyle(theme.selectedText.opacity(configuration.isPressed ? 0.64 : 0.88))
+            .background(Circle().fill(theme.selectedFill.opacity(configuration.isPressed ? 0.86 : 0.72)))
             .contentShape(Circle())
     }
 }

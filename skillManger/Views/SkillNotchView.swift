@@ -10,6 +10,7 @@ import SwiftUI
 
 struct SkillNotchView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var systemColorScheme
     @ObservedObject var store: SkillLibraryStore
     @ObservedObject var languageSettings: AppLanguageSettings
     @ObservedObject var notchState: SkillNotchState
@@ -41,13 +42,16 @@ struct SkillNotchView: View {
             height: notchState.windowSize.height,
             alignment: .top
         )
-        .preferredColorScheme(.dark)
+        .environment(\.notchTheme, theme)
+        .environment(\.colorScheme, effectiveColorScheme)
+        .preferredColorScheme(notchSettings.appearanceMode.colorScheme)
         .environment(\.locale, languageSettings.locale)
         .animation(openAnimation, value: notchState.isExpanded)
     }
 
     private var notchSurface: some View {
-        let shape = SkillNotchShape(topCornerRadius: 7, bottomCornerRadius: notchState.isExpanded ? 28 : 18)
+        let shape = SkillNotchShape(topCornerRadius: 0, bottomCornerRadius: notchState.isExpanded ? 28 : 18)
+        let panelFill = theme.panelBackground.opacity(notchSettings.panelOpacity)
 
         return VStack(spacing: 0) {
             if notchState.isExpanded {
@@ -60,27 +64,28 @@ struct SkillNotchView: View {
         .clipShape(shape)
         .background {
             shape
-                .fill(.black)
+                .fill(panelFill)
                 .shadow(
-                    color: .black.opacity(notchState.isExpanded ? 0.20 : 0.14),
+                    color: theme.shadow.opacity(notchState.isExpanded ? 1 : 0.68),
                     radius: notchState.isExpanded ? 26 : 7,
                     y: notchState.isExpanded ? 12 : 3
                 )
                 .shadow(
-                    color: .black.opacity(notchState.isExpanded ? 0.10 : 0.06),
+                    color: theme.shadow.opacity(notchState.isExpanded ? 0.46 : 0.28),
                     radius: notchState.isExpanded ? 9 : 3,
                     y: notchState.isExpanded ? 4 : 1
                 )
         }
         .contentShape(shape)
+        .overlay {
+            shape.stroke(theme.border, lineWidth: 1)
+        }
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.black)
-                .frame(height: 1)
-                .padding(.horizontal, 7)
-        }
-        .overlay {
-            shape.stroke(.white.opacity(notchState.isExpanded ? 0.10 : 0.06), lineWidth: 1)
+                .fill(panelFill)
+                .frame(width: notchState.currentSize.width, height: 8)
+                .offset(y: -1)
+                .allowsHitTesting(false)
         }
         .onTapGesture {
             if notchState.isExpanded == false {
@@ -93,19 +98,19 @@ struct SkillNotchView: View {
         HStack(spacing: 10) {
             Image(systemName: "sparkle.magnifyingglass")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.86))
+                .foregroundStyle(theme.primaryText.opacity(0.90))
 
             Text(L10n.string("Skill Quick Access", locale: locale))
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.92))
+                .foregroundStyle(theme.primaryText)
                 .lineLimit(1)
 
             Text("\(store.skills.count)")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.black)
+                .foregroundStyle(theme.selectedText)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .background(.white.opacity(0.86), in: Capsule())
+                .background(theme.selectedFill, in: Capsule())
         }
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -154,10 +159,10 @@ struct SkillNotchView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .font(.title2)
-                        .foregroundStyle(.white.opacity(0.35))
+                        .foregroundStyle(theme.tertiaryText)
                     Text(L10n.string("No matching skills", locale: locale))
                         .font(.callout.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.72))
+                        .foregroundStyle(theme.secondaryText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -217,7 +222,7 @@ struct SkillNotchView: View {
                      ? L10n.string("Skill Quick Access", locale: locale)
                      : navigation.selection.title(locale: locale))
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
                 workspaceSummary
             }
 
@@ -262,6 +267,10 @@ struct SkillNotchView: View {
                         Text(behavior.title(locale: locale)).tag(behavior)
                     }
                 }
+
+                Divider()
+
+                NotchAppearanceMenuContent(settingsStore: notchSettings)
             } label: {
                 Image(systemName: notchSettings.triggerMode.systemImage)
             }
@@ -288,7 +297,7 @@ struct SkillNotchView: View {
             .help(L10n.string("Collapse", locale: locale))
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(0.72))
+        .foregroundStyle(theme.secondaryText)
         .alert(
             "Couldn’t Keep Mac Awake",
             isPresented: Binding(
@@ -317,30 +326,30 @@ struct SkillNotchView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(navigation.selection == section ? Color.black : Color.white.opacity(0.62))
+                .foregroundStyle(navigation.selection == section ? theme.selectedText : theme.secondaryText)
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(navigation.selection == section ? Color.white.opacity(0.92) : Color.clear)
+                        .fill(navigation.selection == section ? theme.selectedFill : Color.clear)
                 )
             }
         }
         .padding(3)
-        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .background(theme.subtleFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private var searchBar: some View {
         HStack(spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(theme.tertiaryText)
                 TextField(L10n.string("Search name, tag, use case, or path", locale: locale), text: $searchText)
                     .textFieldStyle(.plain)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
                     .focused($isSearchFocused)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(theme.strongerFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Label(L10n.string("Recommended", locale: locale), systemImage: "sparkles")
                 .font(.caption.weight(.semibold))
@@ -358,17 +367,17 @@ struct SkillNotchView: View {
                 CodexSessionTitleView(session: session, font: .caption.weight(.semibold), iconSize: 10)
                 Text(verbatim: "·")
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(theme.tertiaryText)
                 Text(L10n.format("%d recommended skills", locale: locale, store.skillRecommendations.count))
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(theme.secondaryText)
             }
             .lineLimit(1)
             .frame(maxWidth: 440, alignment: .leading)
         } else {
             Text(librarySummary)
             .font(.caption)
-            .foregroundStyle(.white.opacity(0.52))
+            .foregroundStyle(theme.secondaryText)
             .lineLimit(1)
         }
     }
@@ -383,14 +392,14 @@ struct SkillNotchView: View {
                  ? "\(noteStore.tabs.count) 个标签页 · \(noteStore.title(for: noteStore.activeTabID))"
                  : "\(noteStore.tabs.count) tabs · \(noteStore.title(for: noteStore.activeTabID))")
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(theme.secondaryText)
                 .lineLimit(1)
         case .shelf:
             Text(locale.identifier.lowercased().hasPrefix("zh")
                  ? "\(fileShelfStore.items.count) 个暂存文件"
                  : "\(fileShelfStore.items.count) shelf items")
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(theme.secondaryText)
         }
     }
 
@@ -414,6 +423,14 @@ struct SkillNotchView: View {
         store.searchResults(in: store.recommendationRankedSkills, query: searchText)
     }
 
+    private var effectiveColorScheme: ColorScheme {
+        notchSettings.appearanceMode.colorScheme ?? systemColorScheme
+    }
+
+    private var theme: NotchThemePalette {
+        NotchThemePalette(colorScheme: effectiveColorScheme)
+    }
+
     private func copy(_ skill: Skill) {
         let template = skill.sourceType == .plugin ? PlatformTemplate.codexPluginSkill : store.defaultTemplate
         do {
@@ -429,6 +446,7 @@ struct SkillNotchView: View {
 
 private struct NotchSkillRow: View {
     @Environment(\.locale) private var locale
+    @Environment(\.notchTheme) private var theme
     let skill: Skill
     let isFavorite: Bool
     let recommendation: SkillRecommendation?
@@ -440,7 +458,7 @@ private struct NotchSkillRow: View {
                 HStack(spacing: 6) {
                     Text(skill.name)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.primaryText)
                         .lineLimit(1)
 
                     if isFavorite {
@@ -452,7 +470,7 @@ private struct NotchSkillRow: View {
 
                 Text(skill.description)
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(theme.secondaryText)
                     .lineLimit(1)
             }
 
@@ -470,18 +488,18 @@ private struct NotchSkillRow: View {
 
             Label(skill.origin.title(locale: locale), systemImage: skill.origin.systemImage)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(skill.origin == .selfCreated ? Color.cyan : Color.white.opacity(0.62))
+                .foregroundStyle(skill.origin == .selfCreated ? Color.cyan : theme.secondaryText)
                 .labelStyle(.iconOnly)
                 .padding(6)
-                .background(.white.opacity(0.10), in: Circle())
+                .background(theme.strongerFill, in: Circle())
                 .help(skill.origin.title(locale: locale))
 
             Label(skill.category.title(locale: locale), systemImage: skill.category.systemImage)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.66))
+                .foregroundStyle(theme.secondaryText)
                 .labelStyle(.iconOnly)
                 .padding(6)
-                .background(.white.opacity(0.10), in: Circle())
+                .background(theme.strongerFill, in: Circle())
                 .help(skill.category.title(locale: locale))
 
             Button(action: copyAction) {
@@ -489,15 +507,15 @@ private struct NotchSkillRow: View {
                     .font(.system(size: 13, weight: .semibold))
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.white.opacity(0.82))
+            .foregroundStyle(theme.primaryText.opacity(0.84))
             .help(L10n.string("Copy prompt", locale: locale))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(.white.opacity(0.075), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(theme.subtleFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(.white.opacity(0.06), lineWidth: 1)
+                .stroke(theme.border.opacity(0.72), lineWidth: 1)
         }
     }
 }

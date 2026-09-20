@@ -92,6 +92,21 @@ final class NotchWorkspaceSettings: ObservableObject {
             defaults.set(shelfFileTransferMode.rawValue, forKey: Self.shelfFileTransferModeKey)
         }
     }
+    @Published var appearanceMode: NotchAppearanceMode {
+        didSet {
+            defaults.set(appearanceMode.rawValue, forKey: Self.appearanceModeKey)
+        }
+    }
+    @Published var panelOpacity: Double {
+        didSet {
+            let clampedOpacity = Self.clampedPanelOpacity(panelOpacity)
+            guard panelOpacity == clampedOpacity else {
+                panelOpacity = clampedOpacity
+                return
+            }
+            defaults.set(panelOpacity, forKey: Self.panelOpacityKey)
+        }
+    }
     @Published private(set) var preferredExpandedSize: CGSize?
     @Published private(set) var isKeepingAwake = false
     @Published private(set) var isChangingKeepAwake = false
@@ -100,6 +115,8 @@ final class NotchWorkspaceSettings: ObservableObject {
     private static let triggerModeKey = "skillManager.notch.triggerMode"
     private static let shelfDragCompletionBehaviorKey = "skillManager.shelf.dragCompletionBehavior"
     private static let shelfFileTransferModeKey = "skillManager.shelf.fileTransferMode"
+    private static let appearanceModeKey = "skillManager.notch.appearanceMode"
+    private static let panelOpacityKey = "skillManager.notch.panelOpacity"
     private static let expandedWidthKey = "skillManager.notch.expandedWidth"
     private static let expandedHeightKey = "skillManager.notch.expandedHeight"
     private static let ownsSleepDisabledKey = "skillManager.notch.ownsSleepDisabled"
@@ -131,6 +148,11 @@ final class NotchWorkspaceSettings: ObservableObject {
         let rawTransferMode = defaults.string(forKey: Self.shelfFileTransferModeKey)
         shelfFileTransferMode = rawTransferMode
             .flatMap(ShelfFileTransferMode.init(rawValue:)) ?? .copy
+        let rawAppearanceMode = defaults.string(forKey: Self.appearanceModeKey)
+        appearanceMode = rawAppearanceMode
+            .flatMap(NotchAppearanceMode.init(rawValue:)) ?? .system
+        let savedOpacity = defaults.object(forKey: Self.panelOpacityKey) as? Double
+        panelOpacity = Self.clampedPanelOpacity(savedOpacity ?? 1)
 
         let savedWidth = defaults.double(forKey: Self.expandedWidthKey)
         let savedHeight = defaults.double(forKey: Self.expandedHeightKey)
@@ -209,6 +231,10 @@ final class NotchWorkspaceSettings: ObservableObject {
         preferredExpandedSize = size
         defaults.set(size.width, forKey: Self.expandedWidthKey)
         defaults.set(size.height, forKey: Self.expandedHeightKey)
+    }
+
+    private static func clampedPanelOpacity(_ opacity: Double) -> Double {
+        min(max(opacity, 0.60), 1)
     }
 
     private func requestKeepAwake() {

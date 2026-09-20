@@ -86,6 +86,8 @@ final class NotchWorkspaceSettingsTests: XCTestCase {
 
         store.shelfDragCompletionBehavior = .remove
         store.shelfFileTransferMode = .move
+        store.appearanceMode = .light
+        store.panelOpacity = 0.70
         store.saveExpandedSize(CGSize(width: 880, height: 660))
 
         let restored = NotchWorkspaceSettings(
@@ -95,7 +97,29 @@ final class NotchWorkspaceSettingsTests: XCTestCase {
         )
         XCTAssertEqual(restored.shelfDragCompletionBehavior, .remove)
         XCTAssertEqual(restored.shelfFileTransferMode, .move)
+        XCTAssertEqual(restored.appearanceMode, .light)
+        XCTAssertEqual(restored.panelOpacity, 0.70)
         XCTAssertEqual(restored.preferredExpandedSize, CGSize(width: 880, height: 660))
+    }
+
+    func testPanelOpacityIsClampedWhenRestoredAndChanged() {
+        let defaults = makeDefaults()
+        defaults.set(0.20, forKey: "skillManager.notch.panelOpacity")
+        let store = NotchWorkspaceSettings(
+            defaults: defaults,
+            systemSleepGuard: FakeSystemSleepGuard(),
+            sleepDisabledState: { false }
+        )
+
+        XCTAssertEqual(store.panelOpacity, 0.60)
+
+        store.panelOpacity = 1.40
+        XCTAssertEqual(store.panelOpacity, 1.0)
+        XCTAssertEqual(defaults.double(forKey: "skillManager.notch.panelOpacity"), 1.0)
+
+        store.panelOpacity = 0.10
+        XCTAssertEqual(store.panelOpacity, 0.60)
+        XCTAssertEqual(defaults.double(forKey: "skillManager.notch.panelOpacity"), 0.60)
     }
 
     private func makeDefaults() -> UserDefaults {
