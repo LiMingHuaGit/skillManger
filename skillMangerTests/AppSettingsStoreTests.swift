@@ -85,6 +85,7 @@ final class NotchWorkspaceSettingsTests: XCTestCase {
         )
 
         store.shelfDragCompletionBehavior = .remove
+        store.shelfFileTransferMode = .move
         store.saveExpandedSize(CGSize(width: 880, height: 660))
 
         let restored = NotchWorkspaceSettings(
@@ -93,6 +94,7 @@ final class NotchWorkspaceSettingsTests: XCTestCase {
             sleepDisabledState: { false }
         )
         XCTAssertEqual(restored.shelfDragCompletionBehavior, .remove)
+        XCTAssertEqual(restored.shelfFileTransferMode, .move)
         XCTAssertEqual(restored.preferredExpandedSize, CGSize(width: 880, height: 660))
     }
 

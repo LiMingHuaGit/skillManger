@@ -43,7 +43,12 @@ enum FileDragPasteboard {
 }
 
 enum FileDragOperationPolicy {
-    static let allowedOperations: NSDragOperation = [.copy, .generic]
+    static func allowedOperations(for mode: ShelfFileTransferMode) -> NSDragOperation {
+        switch mode {
+        case .copy: return .copy
+        case .move: return .move
+        }
+    }
 }
 
 enum ShelfDragCompletionPolicy {

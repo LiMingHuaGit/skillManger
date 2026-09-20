@@ -34,7 +34,7 @@ struct FileShelfView: View {
                     .padding(.horizontal, 6)
             }
 
-            marqueeEdgeZones
+            marqueeSelectionSurface
                 .allowsHitTesting(!workspaceState.isShelfDropTargeted)
 
             if workspaceState.isShelfDropTargeted, store.items.isEmpty {
@@ -139,6 +139,7 @@ struct FileShelfView: View {
                         item: item,
                         store: store,
                         workspaceState: workspaceState,
+                        transferMode: settingsStore.shelfFileTransferMode,
                         isSelected: selection.selectedIDs.contains(item.id),
                         onSelect: { modifiers in
                             selectForMouseDown(item.id, modifiers: modifiers)
@@ -191,64 +192,43 @@ struct FileShelfView: View {
     private var marqueeGap: some View {
         Color.clear
             .frame(width: 5)
-            .contentShape(Rectangle())
-            .gesture(selectionGesture)
     }
 
-    private var marqueeEdgeZones: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                marqueeStartSurface.frame(height: 6)
-                Spacer(minLength: 0)
-                marqueeStartSurface.frame(height: 6)
-            }
+    private var marqueeSelectionSurface: some View {
+        FileShelfMarqueeSurface(
+            itemFrames: Array(itemFrames.values),
+            onChanged: updateMarqueeSelection,
+            onEnded: finishMarqueeSelection
+        )
+    }
 
-            HStack(spacing: 0) {
-                marqueeStartSurface.frame(width: 6)
-                Spacer(minLength: 0)
-                marqueeStartSurface.frame(width: 6)
-            }
+    private func updateMarqueeSelection(
+        _ rect: CGRect,
+        _ modifiers: NSEvent.ModifierFlags
+    ) {
+        guard !workspaceState.isShelfDropTargeted else { return }
+
+        if selectionRect == nil {
+            selectionAtDragStart = selection.selectedIDs
+            keyboardFocusGeneration += 1
         }
+
+        let enclosedIDs = Set(
+            itemFrames.compactMap { id, frame in
+                frame.intersects(rect) ? id : nil
+            }
+        )
+        selection.applyMarquee(
+            enclosedIDs: enclosedIDs,
+            initialSelection: selectionAtDragStart,
+            modifiers: modifiers
+        )
+        selectionRect = rect
     }
 
-    private var marqueeStartSurface: some View {
-        Color.clear
-            .contentShape(Rectangle())
-            .gesture(selectionGesture)
-    }
-
-    private var selectionGesture: some Gesture {
-        DragGesture(minimumDistance: 5, coordinateSpace: .named(selectionCoordinateSpace))
-            .onChanged { value in
-                guard !workspaceState.isShelfDropTargeted else { return }
-
-                if selectionRect == nil {
-                    selectionAtDragStart = selection.selectedIDs
-                    keyboardFocusGeneration += 1
-                }
-
-                let rect = CGRect(
-                    x: value.startLocation.x,
-                    y: value.startLocation.y,
-                    width: value.location.x - value.startLocation.x,
-                    height: value.location.y - value.startLocation.y
-                ).standardized
-                let enclosedIDs = Set(
-                    itemFrames.compactMap { id, frame in
-                        frame.intersects(rect) ? id : nil
-                    }
-                )
-                selection.applyMarquee(
-                    enclosedIDs: enclosedIDs,
-                    initialSelection: selectionAtDragStart,
-                    modifiers: NSEvent.modifierFlags
-                )
-                selectionRect = rect
-            }
-            .onEnded { _ in
-                selectionRect = nil
-                selectionAtDragStart = []
-            }
+    private func finishMarqueeSelection() {
+        selectionRect = nil
+        selectionAtDragStart = []
     }
 
     private func selectForMouseDown(_ id: UUID, modifiers: NSEvent.ModifierFlags) {
@@ -320,10 +300,83 @@ private struct FileShelfItemFramePreferenceKey: PreferenceKey {
     }
 }
 
+private struct FileShelfMarqueeSurface: NSViewRepresentable {
+    let itemFrames: [CGRect]
+    let onChanged: (CGRect, NSEvent.ModifierFlags) -> Void
+    let onEnded: () -> Void
+
+    func makeNSView(context: Context) -> FileShelfMarqueeNSView {
+        FileShelfMarqueeNSView()
+    }
+
+    func updateNSView(_ nsView: FileShelfMarqueeNSView, context: Context) {
+        nsView.itemFrames = itemFrames
+        nsView.onChanged = onChanged
+        nsView.onEnded = onEnded
+    }
+}
+
+@MainActor
+private final class FileShelfMarqueeNSView: NSView {
+    var itemFrames: [CGRect] = []
+    var onChanged: ((CGRect, NSEvent.ModifierFlags) -> Void)?
+    var onEnded: (() -> Void)?
+
+    private var startLocation: NSPoint?
+    private var modifiers: NSEvent.ModifierFlags = []
+    private var didBeginSelection = false
+
+    override var isFlipped: Bool { true }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard bounds.contains(point),
+              !itemFrames.contains(where: { $0.contains(point) }) else { return nil }
+        return self
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        startLocation = convert(event.locationInWindow, from: nil)
+        modifiers = event.modifierFlags
+        didBeginSelection = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let startLocation else { return }
+        let location = convert(event.locationInWindow, from: nil)
+        guard didBeginSelection
+                || FileDragGesturePolicy.shouldBegin(from: startLocation, to: location) else { return }
+
+        didBeginSelection = true
+        onChanged?(
+            CGRect(
+                x: startLocation.x,
+                y: startLocation.y,
+                width: location.x - startLocation.x,
+                height: location.y - startLocation.y
+            ).standardized,
+            modifiers
+        )
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if didBeginSelection {
+            onEnded?()
+        }
+        startLocation = nil
+        modifiers = []
+        didBeginSelection = false
+    }
+}
+
 private struct FileShelfChip: View {
     let item: FileShelfItem
     @ObservedObject var store: FileShelfStore
     @ObservedObject var workspaceState: NotebookWorkspaceState
+    let transferMode: ShelfFileTransferMode
     let isSelected: Bool
     let onSelect: (NSEvent.ModifierFlags) -> Void
     let onSelectExclusive: () -> Void
@@ -357,6 +410,7 @@ private struct FileShelfChip: View {
                     FileDragSourceView(
                         url: url,
                         displayName: displayName,
+                        transferMode: transferMode,
                         dragURLs: dragURLs,
                         onDragBegan: {
                             workspaceState.isDraggingShelfItem = true
@@ -541,6 +595,7 @@ private struct FileShelfChip: View {
 private struct FileDragSourceView: NSViewRepresentable {
     let url: URL
     let displayName: String
+    let transferMode: ShelfFileTransferMode
     let dragURLs: () -> [URL]
     let onDragBegan: () -> Void
     let onDragEnded: (NSDragOperation, Bool) -> Void
@@ -561,6 +616,7 @@ private struct FileDragSourceView: NSViewRepresentable {
     func updateNSView(_ nsView: FileDragSourceNSView, context: Context) {
         nsView.url = url
         nsView.displayName = displayName
+        nsView.transferMode = transferMode
         nsView.dragURLs = dragURLs
         nsView.onDragBegan = onDragBegan
         nsView.onDragEnded = onDragEnded
@@ -580,6 +636,7 @@ private struct FileDragSourceView: NSViewRepresentable {
 private final class FileDragSourceNSView: NSView, NSDraggingSource {
     var url: URL?
     var displayName = ""
+    var transferMode: ShelfFileTransferMode = .copy
     var dragURLs: (() -> [URL])?
     var onDragBegan: (() -> Void)?
     var onDragEnded: ((NSDragOperation, Bool) -> Void)?
@@ -736,7 +793,11 @@ private final class FileDragSourceNSView: NSView, NSDraggingSource {
         _ session: NSDraggingSession,
         sourceOperationMaskFor context: NSDraggingContext
     ) -> NSDragOperation {
-        FileDragOperationPolicy.allowedOperations
+        FileDragOperationPolicy.allowedOperations(for: transferMode)
+    }
+
+    func ignoreModifierKeys(for session: NSDraggingSession) -> Bool {
+        true
     }
 
     func draggingSession(

@@ -35,13 +35,12 @@ final class FileDragPasteboardTests: XCTestCase {
         XCTAssertEqual(objects, [url])
     }
 
-    func testExternalDragSupportsOnlyNonDestructiveOperations() {
-        let operations = FileDragOperationPolicy.allowedOperations
+    func testExternalDragUsesConfiguredTransferMode() {
+        let copyOperations = FileDragOperationPolicy.allowedOperations(for: .copy)
+        XCTAssertEqual(copyOperations, .copy)
 
-        XCTAssertTrue(operations.contains(.copy))
-        XCTAssertTrue(operations.contains(.generic))
-        XCTAssertFalse(operations.contains(.move))
-        XCTAssertFalse(operations.contains(.delete))
+        let moveOperations = FileDragOperationPolicy.allowedOperations(for: .move)
+        XCTAssertEqual(moveOperations, .move)
     }
 
     func testFileDragRequiresIntentionalPointerMovement() {

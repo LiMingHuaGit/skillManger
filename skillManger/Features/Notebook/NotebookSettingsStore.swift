@@ -51,6 +51,30 @@ enum ShelfDragCompletionBehavior: String, CaseIterable, Identifiable {
     }
 }
 
+enum ShelfFileTransferMode: String, CaseIterable, Identifiable {
+    case copy
+    case move
+
+    var id: String { rawValue }
+
+    func title(locale: Locale) -> String {
+        let isChinese = locale.identifier.lowercased().hasPrefix("zh")
+        switch self {
+        case .copy:
+            return isChinese ? "复制模式" : "Copy files"
+        case .move:
+            return isChinese ? "剪切模式" : "Move files"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .copy: return "doc.on.doc"
+        case .move: return "scissors"
+        }
+    }
+}
+
 @MainActor
 final class NotchWorkspaceSettings: ObservableObject {
     @Published var triggerMode: NotchTriggerMode {
@@ -63,6 +87,11 @@ final class NotchWorkspaceSettings: ObservableObject {
             defaults.set(shelfDragCompletionBehavior.rawValue, forKey: Self.shelfDragCompletionBehaviorKey)
         }
     }
+    @Published var shelfFileTransferMode: ShelfFileTransferMode {
+        didSet {
+            defaults.set(shelfFileTransferMode.rawValue, forKey: Self.shelfFileTransferModeKey)
+        }
+    }
     @Published private(set) var preferredExpandedSize: CGSize?
     @Published private(set) var isKeepingAwake = false
     @Published private(set) var isChangingKeepAwake = false
@@ -70,6 +99,7 @@ final class NotchWorkspaceSettings: ObservableObject {
 
     private static let triggerModeKey = "skillManager.notch.triggerMode"
     private static let shelfDragCompletionBehaviorKey = "skillManager.shelf.dragCompletionBehavior"
+    private static let shelfFileTransferModeKey = "skillManager.shelf.fileTransferMode"
     private static let expandedWidthKey = "skillManager.notch.expandedWidth"
     private static let expandedHeightKey = "skillManager.notch.expandedHeight"
     private static let ownsSleepDisabledKey = "skillManager.notch.ownsSleepDisabled"
@@ -98,6 +128,9 @@ final class NotchWorkspaceSettings: ObservableObject {
         let rawShelfBehavior = defaults.string(forKey: Self.shelfDragCompletionBehaviorKey)
         shelfDragCompletionBehavior = rawShelfBehavior
             .flatMap(ShelfDragCompletionBehavior.init(rawValue:)) ?? .keep
+        let rawTransferMode = defaults.string(forKey: Self.shelfFileTransferModeKey)
+        shelfFileTransferMode = rawTransferMode
+            .flatMap(ShelfFileTransferMode.init(rawValue:)) ?? .copy
 
         let savedWidth = defaults.double(forKey: Self.expandedWidthKey)
         let savedHeight = defaults.double(forKey: Self.expandedHeightKey)

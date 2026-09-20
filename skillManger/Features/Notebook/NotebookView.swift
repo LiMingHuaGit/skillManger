@@ -251,6 +251,7 @@ struct NotebookView: View {
 }
 
 private struct SettingsMenu: View {
+    @Environment(\.locale) private var locale
     @ObservedObject var settingsStore: NotchWorkspaceSettings
     @State private var isHovering = false
 
@@ -268,6 +269,17 @@ private struct SettingsMenu: View {
                             ? "checkmark"
                             : mode.systemImage
                     )
+                }
+            }
+
+            Divider()
+
+            Picker(
+                locale.identifier.lowercased().hasPrefix("zh") ? "文件操作" : "File operation",
+                selection: $settingsStore.shelfFileTransferMode
+            ) {
+                ForEach(ShelfFileTransferMode.allCases) { mode in
+                    Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
                 }
             }
         } label: {

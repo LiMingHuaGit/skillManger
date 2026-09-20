@@ -163,7 +163,33 @@ struct SkillNotchView: View {
             } else {
                 skillResults
             }
+
+            if showsSkillsShelf {
+                FileShelfView(
+                    store: fileShelfStore,
+                    workspaceState: notebookWorkspaceState,
+                    settingsStore: notchSettings,
+                    size: CGSize(width: notchState.openSize.width - 36, height: 78)
+                )
+                .frame(height: 78)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .dropDestination(for: URL.self) { urls, _ in
+            guard !notebookWorkspaceState.isDraggingShelfItem else { return false }
+            notebookWorkspaceState.isShelfDropTargeted = false
+            return fileShelfStore.acceptDrop(urls)
+        } isTargeted: { targeted in
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                notebookWorkspaceState.isShelfDropTargeted = targeted
+                    && !notebookWorkspaceState.isDraggingShelfItem
+            }
+        }
+        .animation(openAnimation, value: showsSkillsShelf)
+    }
+
+    private var showsSkillsShelf: Bool {
+        notebookWorkspaceState.isShelfDropTargeted || !fileShelfStore.items.isEmpty
     }
 
     private var skillResults: some View {
@@ -214,6 +240,17 @@ struct SkillNotchView: View {
             Menu {
                 Picker("Trigger", selection: $notchSettings.triggerMode) {
                     ForEach(NotchTriggerMode.allCases) { mode in
+                        Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
+                    }
+                }
+
+                Divider()
+
+                Picker(
+                    locale.identifier.lowercased().hasPrefix("zh") ? "文件操作" : "File operation",
+                    selection: $notchSettings.shelfFileTransferMode
+                ) {
+                    ForEach(ShelfFileTransferMode.allCases) { mode in
                         Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
                     }
                 }

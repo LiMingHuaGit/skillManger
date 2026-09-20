@@ -91,9 +91,7 @@ struct NotchFileShelfPane: View {
                             .font(.system(size: 28, weight: .light))
                         Text(locale.identifier.lowercased().hasPrefix("zh") ? "拖放文件到这里" : "Drop files here")
                             .font(.callout.weight(.semibold))
-                        Text(locale.identifier.lowercased().hasPrefix("zh")
-                             ? "最多暂存 100 个文件，不会移动或删除原文件"
-                             : "Keep up to 100 references without moving the originals")
+                        Text(shelfDescription)
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.42))
                     }
@@ -118,6 +116,20 @@ struct NotchFileShelfPane: View {
                 } isTargeted: { targeted in
                     workspaceState.isShelfDropTargeted = targeted && !workspaceState.isDraggingShelfItem
                 }
+        }
+    }
+
+    private var shelfDescription: String {
+        let isChinese = locale.identifier.lowercased().hasPrefix("zh")
+        switch settingsStore.shelfFileTransferMode {
+        case .copy:
+            return isChinese
+                ? "最多暂存 100 个文件，拖出时复制并保留原文件"
+                : "Keep up to 100 items; dragging copies the originals"
+        case .move:
+            return isChinese
+                ? "最多暂存 100 个文件，拖出时移动并删除原位置文件"
+                : "Keep up to 100 items; dragging moves the originals"
         }
     }
 }
