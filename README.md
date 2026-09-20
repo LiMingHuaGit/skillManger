@@ -1,5 +1,7 @@
 # Skill Manager
 
+English | [简体中文](./README.zh-CN.md)
+
 <p align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="Skill Manager is a notch-style macOS workspace for AI skill lookup, quick notes, and temporary file staging.">
 </p>
@@ -71,7 +73,7 @@ Skill Manager keeps routine maintenance visible without turning the app into a f
 
 ## Companion skill
 
-Skill Manager is designed to work especially well with [`$ming-skill-source-manager`](/Users/ming/.codex/skills/ming-skill-source-manager/SKILL.md). Use that skill to create and audit `SOURCE.md` provenance records for installed skills, then use Skill Manager to browse the results, spot third-party or unknown origins, and copy the right skill reference into chat.
+Skill Manager ships with the companion skill [`$ming-skill-source-manager`](./skills/ming-skill-source-manager/SKILL.md). Use that skill to create and audit `SOURCE.md` provenance records for installed skills, then use Skill Manager to browse the results, spot third-party or unknown origins, and copy the right skill reference into chat.
 
 Typical pairing:
 
@@ -79,7 +81,19 @@ Typical pairing:
 $ming-skill-source-manager writes SOURCE.md -> Skill Manager indexes provenance -> chat handoff includes the right skill reference
 ```
 
-## Build locally
+The bundled skill files live here:
+
+```text
+skills/ming-skill-source-manager/
+├── README.md
+├── SKILL.md
+├── SOURCE.md
+└── scripts/manage_sources.py
+```
+
+## Install
+
+### Install the macOS app
 
 Requirements:
 
@@ -97,6 +111,41 @@ xcodebuild \
   build
 ```
 
+Create a local DMG:
+
+```bash
+./script/package_dmg.sh
+```
+
+### Install the companion skill
+
+Manual local install:
+
+```bash
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+mkdir -p "$CODEX_HOME/skills/ming-skill-source-manager"
+cp -R skills/ming-skill-source-manager/. "$CODEX_HOME/skills/ming-skill-source-manager/"
+python3 "$CODEX_HOME/skills/ming-skill-source-manager/scripts/manage_sources.py" --help
+```
+
+After this, invoke it in Codex as:
+
+```md
+[$ming-skill-source-manager](./skills/ming-skill-source-manager/SKILL.md)
+```
+
+If the repository is published on GitHub, it can also be installed by path with Codex's skill installer:
+
+```bash
+python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+  --repo <owner>/<repo> \
+  --path skills/ming-skill-source-manager
+```
+
+## Debugging
+
+### App checks
+
 Run tests:
 
 ```bash
@@ -106,11 +155,48 @@ xcodebuild test \
   -destination 'platform=macOS'
 ```
 
-Create a local DMG:
+When working on the notch workspace, test these flows manually after the build passes:
+
+- Open and collapse the notch workspace from the menu bar.
+- Create a quick note and confirm it remains available while switching focus.
+- Drop files into the file shelf, then drag them back out.
+- Search for a known skill, open its detail view, and copy a Codex mention.
+
+### Companion skill checks
+
+Validate the helper script:
 
 ```bash
-./script/package_dmg.sh
+python3 -m py_compile skills/ming-skill-source-manager/scripts/manage_sources.py
+python3 skills/ming-skill-source-manager/scripts/manage_sources.py --help
 ```
+
+Run a dry provenance audit without writing files:
+
+```bash
+python3 skills/ming-skill-source-manager/scripts/manage_sources.py audit --skills-root ~/.codex/skills
+```
+
+Backfill missing `SOURCE.md` files only when you intend to write changes:
+
+```bash
+python3 skills/ming-skill-source-manager/scripts/manage_sources.py audit \
+  --skills-root ~/.codex/skills \
+  --include-system \
+  --write \
+  --write-unknown
+```
+
+Use GitHub search only when you explicitly want network lookup for unresolved unknown skills:
+
+```bash
+python3 skills/ming-skill-source-manager/scripts/manage_sources.py audit \
+  --skills-root ~/.codex/skills \
+  --include-system \
+  --github-search-unknown
+```
+
+Do not write tokens, secrets, or credential-bearing clone URLs into `SOURCE.md`.
 
 ## Project notes
 
