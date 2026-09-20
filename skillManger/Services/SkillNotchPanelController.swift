@@ -89,7 +89,6 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     func showNotch() {
         presentationScreen = nil
         appState.refreshIfNeeded()
-        appState.notchSettings.triggerMode = .hover
         let layout = currentLayout()
         updateState(for: layout)
         rebuildContent(layout: layout)

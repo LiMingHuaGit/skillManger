@@ -262,42 +262,13 @@ struct NotebookView: View {
 }
 
 private struct SettingsMenu: View {
-    @Environment(\.locale) private var locale
     @Environment(\.notchTheme) private var theme
     @ObservedObject var settingsStore: NotchWorkspaceSettings
     @State private var isHovering = false
 
     var body: some View {
         Menu {
-            Text("Open Skill Manager · \(settingsStore.triggerMode.title)")
-
-            ForEach(NotchTriggerMode.allCases) { mode in
-                Button {
-                    settingsStore.triggerMode = mode
-                } label: {
-                    Label(
-                        mode.title,
-                        systemImage: settingsStore.triggerMode == mode
-                            ? "checkmark"
-                            : mode.systemImage
-                    )
-                }
-            }
-
-            Divider()
-
-            Picker(
-                locale.identifier.lowercased().hasPrefix("zh") ? "文件操作" : "File operation",
-                selection: $settingsStore.shelfFileTransferMode
-            ) {
-                ForEach(ShelfFileTransferMode.allCases) { mode in
-                    Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
-                }
-            }
-
-            Divider()
-
-            NotchAppearanceMenuContent(settingsStore: settingsStore)
+            NotchSettingsMenuContent(settingsStore: settingsStore)
         } label: {
             Image(systemName: "gearshape")
                 .font(.system(size: 13, weight: .semibold))

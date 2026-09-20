@@ -104,3 +104,48 @@ struct NotchAppearanceMenuContent: View {
         }
     }
 }
+
+struct NotchSettingsMenuContent: View {
+    @Environment(\.locale) private var locale
+    @ObservedObject var settingsStore: NotchWorkspaceSettings
+
+    var body: some View {
+        Picker(triggerTitle, selection: $settingsStore.triggerMode) {
+            ForEach(NotchTriggerMode.allCases) { mode in
+                Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
+            }
+        }
+
+        Divider()
+
+        Picker(fileOperationTitle, selection: $settingsStore.shelfFileTransferMode) {
+            ForEach(ShelfFileTransferMode.allCases) { mode in
+                Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
+            }
+        }
+
+        Divider()
+
+        Picker(shelfTitle, selection: $settingsStore.shelfDragCompletionBehavior) {
+            ForEach(ShelfDragCompletionBehavior.allCases) { behavior in
+                Text(behavior.title(locale: locale)).tag(behavior)
+            }
+        }
+
+        Divider()
+
+        NotchAppearanceMenuContent(settingsStore: settingsStore)
+    }
+
+    private var triggerTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "触发方式" : "Trigger"
+    }
+
+    private var fileOperationTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "文件操作" : "File operation"
+    }
+
+    private var shelfTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "暂存架" : "Shelf"
+    }
+}

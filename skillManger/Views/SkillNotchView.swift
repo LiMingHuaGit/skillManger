@@ -243,34 +243,7 @@ struct SkillNotchView: View {
             .disabled(navigation.selection != .skills)
 
             Menu {
-                Picker("Trigger", selection: $notchSettings.triggerMode) {
-                    ForEach(NotchTriggerMode.allCases) { mode in
-                        Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
-                    }
-                }
-
-                Divider()
-
-                Picker(
-                    locale.identifier.lowercased().hasPrefix("zh") ? "文件操作" : "File operation",
-                    selection: $notchSettings.shelfFileTransferMode
-                ) {
-                    ForEach(ShelfFileTransferMode.allCases) { mode in
-                        Label(mode.title(locale: locale), systemImage: mode.systemImage).tag(mode)
-                    }
-                }
-
-                Divider()
-
-                Picker("Shelf", selection: $notchSettings.shelfDragCompletionBehavior) {
-                    ForEach(ShelfDragCompletionBehavior.allCases) { behavior in
-                        Text(behavior.title(locale: locale)).tag(behavior)
-                    }
-                }
-
-                Divider()
-
-                NotchAppearanceMenuContent(settingsStore: notchSettings)
+                NotchSettingsMenuContent(settingsStore: notchSettings)
             } label: {
                 Image(systemName: notchSettings.triggerMode.systemImage)
             }
