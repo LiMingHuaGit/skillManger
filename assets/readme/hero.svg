@@ -1,106 +1,90 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
   <title id="title">Skill Manager</title>
-  <desc id="desc">A macOS workbench for indexing local AI skills, checking health, and copying the right chat reference.</desc>
+  <desc id="desc">A notch-style macOS workspace for AI skill lookup, quick notes, and temporary file staging.</desc>
   <defs>
     <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
       <stop offset="1" stop-color="#f7f7f5"/>
     </linearGradient>
-    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="125%">
-      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.12"/>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.14"/>
     </filter>
     <style>
       .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
       .mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; }
       .ink { fill: #0b0b0d; }
       .muted { fill: #67676f; }
-      .hair { stroke: #deded8; stroke-width: 1; }
       .rule { stroke: #0b0b0d; stroke-width: 1.2; }
     </style>
   </defs>
 
   <rect width="1200" height="420" rx="26" fill="url(#paper)"/>
-  <path d="M0 338 C160 318 214 382 354 354 C482 329 515 259 663 277 C810 295 864 372 1001 342 C1094 322 1131 278 1200 300 L1200 420 L0 420 Z" fill="#dceeb1" opacity="0.72"/>
-  <path d="M882 0 L1200 0 L1200 132 C1140 103 1087 105 1031 75 C980 48 940 20 882 0 Z" fill="#c5b0f4" opacity="0.62"/>
-  <path d="M760 411 C821 359 883 356 938 379 C990 401 1049 394 1112 361 L1200 317 L1200 420 L760 420 Z" fill="#c8e6cd" opacity="0.8"/>
+  <path d="M0 340 C158 320 216 382 354 354 C484 328 520 258 666 278 C813 298 865 373 1003 342 C1095 321 1135 279 1200 300 L1200 420 L0 420 Z" fill="#dceeb1" opacity="0.78"/>
+  <path d="M858 0 L1200 0 L1200 136 C1137 103 1084 108 1028 76 C977 47 930 18 858 0 Z" fill="#c5b0f4" opacity="0.58"/>
+  <path d="M760 412 C822 360 884 356 938 379 C991 402 1050 394 1114 360 L1200 316 L1200 420 L760 420 Z" fill="#c8e6cd" opacity="0.82"/>
 
   <g transform="translate(58 52)">
     <g class="mono" font-size="18" letter-spacing="1.2" fill="#35353b">
-      <text x="0" y="0">LOCAL-FIRST MACOS UTILITY</text>
-      <line x1="0" y1="18" x2="266" y2="18" class="rule"/>
+      <text x="0" y="0">NOTCH-STYLE AI WORKSPACE</text>
+      <line x1="0" y1="18" x2="300" y2="18" class="rule"/>
     </g>
 
     <text class="sans ink" x="0" y="88" font-size="64" font-weight="760">Skill Manager</text>
-    <text class="sans ink" x="0" y="136" font-size="30" font-weight="520">Find the right AI skill,</text>
-    <text class="sans ink" x="0" y="174" font-size="30" font-weight="520">then copy the exact chat handoff.</text>
-    <text class="sans muted" x="0" y="222" font-size="20">A searchable local library for Codex, Claude, ChatGPT,</text>
-    <text class="sans muted" x="0" y="250" font-size="20">Cursor, and custom prompt templates.</text>
+    <text class="sans ink" x="0" y="136" font-size="30" font-weight="520">Skills, notes, and files</text>
+    <text class="sans ink" x="0" y="174" font-size="30" font-weight="520">one gesture away from the chat.</text>
+    <text class="sans muted" x="0" y="222" font-size="20">A local macOS command shelf for reusable AI skills,</text>
+    <text class="sans muted" x="0" y="250" font-size="20">quick notes, and temporary file staging.</text>
 
     <g transform="translate(0 292)">
-      <rect x="0" y="0" width="150" height="34" rx="17" fill="#0b0b0d"/>
-      <text class="sans" x="18" y="23" font-size="18" font-weight="650" fill="#ffffff">SwiftUI macOS</text>
-      <rect x="164" y="0" width="128" height="34" rx="17" fill="#ffffff" stroke="#0b0b0d"/>
-      <text class="sans ink" x="182" y="23" font-size="18" font-weight="650">Local index</text>
-      <rect x="306" y="0" width="145" height="34" rx="17" fill="#ffffff" stroke="#0b0b0d"/>
-      <text class="sans ink" x="324" y="23" font-size="18" font-weight="650">Copy templates</text>
+      <rect x="0" y="0" width="168" height="34" rx="17" fill="#0b0b0d"/>
+      <text class="sans" x="18" y="23" font-size="18" font-weight="650" fill="#ffffff">Notch workspace</text>
+      <rect x="182" y="0" width="126" height="34" rx="17" fill="#ffffff" stroke="#0b0b0d"/>
+      <text class="sans ink" x="200" y="23" font-size="18" font-weight="650">Quick notes</text>
+      <rect x="322" y="0" width="124" height="34" rx="17" fill="#ffffff" stroke="#0b0b0d"/>
+      <text class="sans ink" x="340" y="23" font-size="18" font-weight="650">File shelf</text>
     </g>
   </g>
 
-  <g transform="translate(620 54)" filter="url(#softShadow)">
-    <rect x="0" y="0" width="522" height="312" rx="18" fill="#ffffff" stroke="#d8d8d2"/>
-    <rect x="0" y="0" width="522" height="38" rx="18" fill="#0b0b0d"/>
-    <circle cx="22" cy="19" r="5" fill="#efd4d4"/>
-    <circle cx="40" cy="19" r="5" fill="#f4ecd6"/>
-    <circle cx="58" cy="19" r="5" fill="#c8e6cd"/>
-    <text class="mono" x="88" y="25" font-size="18" fill="#ffffff" opacity="0.82">~/.codex/skills indexed</text>
+  <g transform="translate(606 42)" filter="url(#softShadow)">
+    <rect x="55" y="0" width="414" height="38" rx="19" fill="#0b0b0d"/>
+    <text class="mono" x="182" y="25" font-size="18" fill="#ffffff" opacity="0.9">skills | notes | files</text>
+    <circle cx="93" cy="19" r="5" fill="#efd4d4"/>
+    <circle cx="112" cy="19" r="5" fill="#f4ecd6"/>
+    <circle cx="131" cy="19" r="5" fill="#c8e6cd"/>
 
-    <g transform="translate(20 58)">
-      <rect x="0" y="0" width="116" height="234" rx="10" fill="#f7f7f5" stroke="#e5e5df"/>
-      <text class="sans ink" x="14" y="31" font-size="20" font-weight="700">Library</text>
-      <g class="sans" font-size="18" fill="#44444a">
-        <text x="16" y="68">Books</text>
-        <text x="16" y="103">Plugins</text>
-        <text x="16" y="138">Favorites</text>
-        <text x="16" y="173">Recents</text>
-        <text x="16" y="208">Settings</text>
-      </g>
-      <rect x="10" y="48" width="96" height="26" rx="7" fill="#0f766e" opacity="0.13"/>
+    <rect x="0" y="54" width="524" height="278" rx="22" fill="#ffffff" stroke="#d8d8d2"/>
+    <g transform="translate(24 78)">
+      <rect x="0" y="0" width="146" height="218" rx="12" fill="#f7f7f5" stroke="#e5e5df"/>
+      <text class="sans ink" x="16" y="32" font-size="21" font-weight="760">Skills</text>
+      <rect x="16" y="52" width="114" height="38" rx="9" fill="#dceeb1"/>
+      <text class="sans ink" x="28" y="77" font-size="18" font-weight="700">source</text>
+      <rect x="16" y="102" width="114" height="38" rx="9" fill="#c5b0f4" opacity="0.72"/>
+      <text class="sans ink" x="28" y="127" font-size="18" font-weight="700">plugin</text>
+      <rect x="16" y="152" width="114" height="38" rx="9" fill="#f3c9b6" opacity="0.72"/>
+      <text class="sans ink" x="28" y="177" font-size="18" font-weight="700">review</text>
     </g>
 
-    <g transform="translate(154 58)">
-      <rect x="0" y="0" width="168" height="234" rx="10" fill="#ffffff" stroke="#e5e5df"/>
-      <rect x="14" y="14" width="140" height="25" rx="8" fill="#f1f1ec"/>
-      <circle cx="29" cy="26" r="5" fill="none" stroke="#8a8a91" stroke-width="2"/>
-      <line x1="33" y1="30" x2="39" y2="36" stroke="#8a8a91" stroke-width="2" stroke-linecap="round"/>
-      <g transform="translate(14 58)">
-        <rect x="0" y="0" width="140" height="44" rx="8" fill="#dceeb1" opacity="0.75"/>
-        <text class="sans ink" x="10" y="21" font-size="18" font-weight="700">beautify</text>
-        <text class="mono muted" x="10" y="38" font-size="16">Healthy</text>
-      </g>
-      <g transform="translate(14 112)">
-        <rect x="0" y="0" width="140" height="44" rx="8" fill="#c5b0f4" opacity="0.55"/>
-        <text class="sans ink" x="10" y="21" font-size="18" font-weight="700">lark-doc</text>
-        <text class="mono muted" x="10" y="38" font-size="16">Plugin</text>
-      </g>
-      <g transform="translate(14 166)">
-        <rect x="0" y="0" width="140" height="44" rx="8" fill="#f3c9b6" opacity="0.6"/>
-        <text class="sans ink" x="10" y="21" font-size="18" font-weight="700">swiftui</text>
-        <text class="mono muted" x="10" y="38" font-size="16">Review</text>
-      </g>
+    <g transform="translate(190 78)">
+      <rect x="0" y="0" width="146" height="218" rx="12" fill="#ffffff" stroke="#e5e5df"/>
+      <text class="sans ink" x="16" y="32" font-size="21" font-weight="760">Notes</text>
+      <line x1="18" y1="62" x2="122" y2="62" stroke="#0f766e" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="90" x2="108" y2="90" stroke="#d0d0ca" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="118" x2="124" y2="118" stroke="#d0d0ca" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="146" x2="92" y2="146" stroke="#d0d0ca" stroke-width="5" stroke-linecap="round"/>
+      <rect x="18" y="172" width="86" height="26" rx="13" fill="#0f766e"/>
+      <text class="sans" x="30" y="191" font-size="18" font-weight="700" fill="#ffffff">capture</text>
     </g>
 
-    <g transform="translate(340 58)">
-      <rect x="0" y="0" width="162" height="234" rx="10" fill="#ffffff" stroke="#e5e5df"/>
-      <text class="sans ink" x="14" y="31" font-size="20" font-weight="760">Chat handoff</text>
-      <text class="sans muted" x="14" y="58" font-size="18">Pick target.</text>
-      <rect x="14" y="75" width="134" height="28" rx="14" fill="#0b0b0d"/>
-      <text class="sans" x="25" y="96" font-size="18" font-weight="650" fill="#ffffff">Codex</text>
-      <rect x="14" y="120" width="134" height="66" rx="8" fill="#f7f7f5" stroke="#e1e1db"/>
-      <text class="mono ink" x="24" y="146" font-size="18">[$skill]</text>
-      <text class="mono muted" x="24" y="168" font-size="16">($path)</text>
-      <rect x="14" y="202" width="84" height="24" rx="12" fill="#0f766e"/>
-      <text class="sans" x="28" y="220" font-size="18" font-weight="700" fill="#ffffff">Copy</text>
-      <path d="M111 209 L119 217 L135 199" fill="none" stroke="#0f766e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(356 78)">
+      <rect x="0" y="0" width="144" height="218" rx="12" fill="#ffffff" stroke="#e5e5df"/>
+      <text class="sans ink" x="16" y="32" font-size="21" font-weight="760">Files</text>
+      <rect x="18" y="56" width="108" height="32" rx="8" fill="#f1f1ec"/>
+      <text class="mono muted" x="27" y="78" font-size="18">brief.md</text>
+      <rect x="18" y="102" width="108" height="32" rx="8" fill="#f1f1ec"/>
+      <text class="mono muted" x="27" y="124" font-size="18">shot.png</text>
+      <rect x="18" y="148" width="108" height="32" rx="8" fill="#f1f1ec"/>
+      <text class="mono muted" x="27" y="170" font-size="18">log.txt</text>
+      <path d="M92 196 L102 206 L124 182" fill="none" stroke="#0f766e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
   </g>
 </svg>

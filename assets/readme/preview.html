@@ -65,29 +65,36 @@
   <main>
     <p class="note">Local README preview at GitHub-like content width. Source: ../../README.md</p>
     <h1>Skill Manager</h1>
-    <p class="hero"><img src="./hero.svg" alt="Skill Manager is a macOS workbench for indexing local AI skills and copying chat-ready references."></p>
-    <p>Skill Manager is a local-first macOS utility for people who work with reusable AI skills across Codex, Claude, ChatGPT, Cursor, and plugin-backed toolchains. It keeps the installed skill library visible, searchable, and ready to hand off into the next chat without opening Finder or memorizing paths.</p>
+    <p class="hero"><img src="./hero.svg" alt="Skill Manager is a notch-style macOS workspace for AI skill lookup, quick notes, and temporary file staging."></p>
+    <p>Skill Manager is a local-first macOS utility for people who work with reusable AI skills across Codex, Claude, ChatGPT, Cursor, and plugin-backed toolchains. Its signature surface is a notch-style workspace that keeps skill lookup, quick notes, and a temporary file shelf close to the current chat without forcing you back into Finder.</p>
 
     <h2>What it does</h2>
     <ul>
+      <li>Opens a notch-style workspace for skill management, quick notes, and a drag-friendly file staging shelf.</li>
       <li>Indexes local Codex skill roots, system skills, project skills, and plugin-provided skills.</li>
       <li>Shows a focused library with search, source badges, categories, health states, favorites, and recents.</li>
       <li>Opens a detail view with the skill description, provenance, tags, source path, duplicate information, and a useful excerpt.</li>
       <li>Copies platform-aware references such as Codex Markdown mentions, instruction blocks, Claude prompts, ChatGPT prompts, Cursor prompts, plain text, and custom templates.</li>
-      <li>Provides a menu bar and notch-style workspace for quick access while staying out of the way.</li>
     </ul>
 
     <h2>Why it exists</h2>
-    <p>AI skill collections grow faster than memory. A useful skill may live under <code>~/.codex/skills</code>, inside <code>.system</code>, or in a plugin cache, and each chat surface wants a different reference format.</p>
-    <pre><code>Index local skills -&gt; inspect fit and health -&gt; copy the right chat handoff</code></pre>
+    <p>AI skill collections grow faster than memory, and real AI-assisted work usually also creates scratch notes and short-lived files. A useful skill may live under <code>~/.codex/skills</code>, inside <code>.system</code>, or in a plugin cache, and each chat surface wants a different reference format.</p>
+    <pre><code>Open notch workspace -&gt; find a skill -&gt; capture context -&gt; stage files -&gt; copy the handoff</code></pre>
+
+    <h2>Highlight features</h2>
+    <ul>
+      <li><strong>Notch-style skill manager:</strong> keep the skill library one gesture away from the current task, with search, health states, categories, favorites, recents, plugin views, and platform-aware copy actions.</li>
+      <li><strong>Quick note capture:</strong> write temporary Markdown notes near the top edge of the screen while reading, coding, or chatting with an AI assistant.</li>
+      <li><strong>File staging shelf:</strong> drop files into a short-lived shelf, keep them visible while you work, then drag or copy them back into the next app or chat flow.</li>
+    </ul>
 
     <h2>Core workflow</h2>
     <ol>
-      <li>Open Skill Manager from the menu bar.</li>
+      <li>Open the notch workspace or Skill Manager window from the menu bar.</li>
       <li>Search by name, description, tag, platform, or source path.</li>
-      <li>Check the detail view for use case, provenance, health, and source excerpt.</li>
-      <li>Choose a target platform template.</li>
-      <li>Copy the generated mention or prompt and paste it into the active AI chat.</li>
+      <li>Capture a quick note or stage related files when the task needs local context.</li>
+      <li>Check the skill detail view for use case, provenance, health, and source excerpt.</li>
+      <li>Choose a target platform template, copy the generated mention or prompt, and paste it into the active AI chat.</li>
     </ol>
 
     <h2>Product surface</h2>
@@ -99,7 +106,9 @@
         <tr><td>Plugins</td><td>Inspect plugin packages and their contributed skills.</td></tr>
         <tr><td>Favorites and Recents</td><td>Keep repeat workflows close by after copy actions.</td></tr>
         <tr><td>Settings</td><td>Manage roots, re-indexing, language, launch at login, and copy templates.</td></tr>
-        <tr><td>Notch workspace</td><td>Keep quick notes, file shelf items, and skill access near the top edge of the screen.</td></tr>
+        <tr><td>Notch workspace</td><td>Keep skill search, quick notes, and file shelf items near the top edge of the screen.</td></tr>
+        <tr><td>Quick notes</td><td>Capture Markdown scratch notes without opening a full notes app.</td></tr>
+        <tr><td>File shelf</td><td>Temporarily hold files while moving between Finder, code, and chat.</td></tr>
       </tbody>
     </table>
 
@@ -113,6 +122,10 @@ When to use it: $description</code></pre>
 
     <h2>Health and provenance</h2>
     <p>Skill Manager keeps routine maintenance visible without turning the app into a full editor. Indexed entries can show health states for healthy skills, missing metadata, missing files, duplicate names, and unreadable sources. Provenance records such as <code>SOURCE.md</code> are displayed when available so third-party, system, and self-created skills are easier to distinguish.</p>
+
+    <h2>Companion skill</h2>
+    <p>Skill Manager is designed to work especially well with <code>$ming-skill-source-manager</code>. Use that skill to create and audit <code>SOURCE.md</code> provenance records for installed skills, then use Skill Manager to browse the results, spot third-party or unknown origins, and copy the right skill reference into chat.</p>
+    <pre><code>$ming-skill-source-manager writes SOURCE.md -&gt; Skill Manager indexes provenance -&gt; chat handoff includes the right skill reference</code></pre>
 
     <h2>Build locally</h2>
     <p>Requirements:</p>
