@@ -365,11 +365,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         guard appState.notchSettings.triggerMode == .hover,
               menuTrackingDepth == 0,
               !appState.editorInteractionState.hasKeyboardFocus() else { return }
-        let interactionFrame = expandedPanel.frame.insetBy(
-            dx: -Interaction.expandedExitPadding,
-            dy: -Interaction.expandedExitPadding
-        )
-        if interactionFrame.contains(mouse) {
+        if isPointInExpandedStayRegion(mouse) {
             collapseWorkItem?.cancel()
             collapseWorkItem = nil
         } else {
@@ -392,12 +388,14 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private func scheduleCollapse() {
         guard collapseWorkItem == nil else { return }
         guard appState.fileShelfStore.items.isEmpty else { return }
+        guard menuTrackingDepth == 0 else { return }
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.collapseWorkItem = nil
             guard !self.expandedPanel.inLiveResize, !self.isResizingExpandedPanel else { return }
             guard self.appState.fileShelfStore.items.isEmpty else { return }
-            guard !self.expandedPanel.frame.insetBy(dx: -8, dy: -8).contains(NSEvent.mouseLocation) else { return }
+            guard self.menuTrackingDepth == 0 else { return }
+            guard !self.isPointInExpandedStayRegion(NSEvent.mouseLocation) else { return }
             self.collapse(animated: true)
         }
         collapseWorkItem = work
@@ -421,7 +419,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
             Task { @MainActor in
                 guard let self, self.notchState.isExpanded else { return }
                 guard self.appState.fileShelfStore.items.isEmpty else { return }
-                guard !self.expandedPanel.frame.contains(NSEvent.mouseLocation) else { return }
+                guard !self.isPointInExpandedStayRegion(NSEvent.mouseLocation) else { return }
                 self.collapse(animated: true)
             }
         }
@@ -468,10 +466,15 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
     @objc private func menuDidBeginTracking() {
         menuTrackingDepth += 1
+        collapseWorkItem?.cancel()
+        collapseWorkItem = nil
     }
 
     @objc private func menuDidEndTracking() {
-        menuTrackingDepth = max(0, menuTrackingDepth - 1)
+        menuTrackingDepth = 0
+        DispatchQueue.main.async { [weak self] in
+            self?.pollMouseLocation()
+        }
     }
 
     private func repositionForCurrentScreen() {
@@ -533,6 +536,22 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
     private func activationFrame() -> NSRect {
         NotchGeometry.activationFrame(for: currentLayout(), in: targetFrame())
+    }
+
+    private func expandedContentFrame() -> NSRect {
+        var frame = expandedPanel.frame
+        frame.origin.x += NotchGeometry.expandedShadowHorizontalPadding
+        frame.size.width = notchState.openSize.width
+        frame.origin.y = frame.maxY - notchState.openSize.height
+        frame.size.height = notchState.openSize.height
+        return frame
+    }
+
+    private func isPointInExpandedStayRegion(_ point: NSPoint) -> Bool {
+        expandedContentFrame()
+            .insetBy(dx: -Interaction.expandedExitPadding, dy: -Interaction.expandedExitPadding)
+            .contains(point)
+            || activationFrame().contains(point)
     }
 
     private func targetScreen() -> NSScreen? {
