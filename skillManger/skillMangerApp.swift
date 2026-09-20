@@ -17,14 +17,14 @@ struct skillMangerApp: App {
     var body: some Scene {
         MenuBarExtra {
             Button {
-                SkillNotchPanelController.shared.createNote()
+                SkillNotchPanelController.shared.createNoteFromMenu()
             } label: {
                 Label("New Note", systemImage: "square.and.pencil")
             }
             .keyboardShortcut("n", modifiers: .command)
 
             Button {
-                SkillNotchPanelController.shared.expand(animated: true, activate: true)
+                SkillNotchPanelController.shared.showNotchFromMenu()
             } label: {
                 Label("Show Notch", systemImage: "rectangle.topthird.inset.filled")
             }

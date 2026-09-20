@@ -43,6 +43,8 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private enum Interaction {
         static let hoverDelay: TimeInterval = 1.0
         static let collapseDelay: TimeInterval = 0.08
+        static let menuActionGraceDelay: TimeInterval = 3.0
+        static let menuActionMovementThreshold: CGFloat = 4
         static let expandedExitPadding: CGFloat = 8
     }
 
@@ -57,6 +59,10 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private var globalMouseDownMonitor: Any?
     private var hoverWorkItem: DispatchWorkItem?
     private var collapseWorkItem: DispatchWorkItem?
+    private var menuActionCollapseWorkItem: DispatchWorkItem?
+    private var menuActionInitialMouseLocation: NSPoint?
+    private var isAwaitingMenuActionInteraction = false
+    private var presentationScreen: NSScreen?
     private var menuTrackingDepth = 0
     private var isApplyingExpandedFrame = false
     private var isResizingExpandedPanel = false
@@ -81,6 +87,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     }
 
     func showNotch() {
+        presentationScreen = nil
         appState.refreshIfNeeded()
         appState.notchSettings.triggerMode = .hover
         let layout = currentLayout()
@@ -149,6 +156,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         let delay = animated ? 0.17 : 0
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, !self.notchState.isExpanded else { return }
+            self.presentationScreen = nil
             let layout = self.currentLayout()
             self.expandedPanel.orderOut(nil)
             self.expandedPanel.allowsKeyActivation = false
@@ -162,6 +170,14 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         appState.noteStore.addTab()
         appState.notchNavigation.selection = .notes
         expand(animated: true, activate: true)
+    }
+
+    func showNotchFromMenu() {
+        presentFromMenu(createNewNote: false)
+    }
+
+    func createNoteFromMenu() {
+        presentFromMenu(createNewNote: true)
     }
 
     func showLibraryWindow() {
@@ -332,6 +348,14 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
             return
         }
 
+        if isAwaitingMenuActionInteraction {
+            if menuActionPointerMovedIntoPanel(mouse) {
+                registerMenuActionInteraction()
+            } else {
+                return
+            }
+        }
+
         guard appState.fileShelfStore.items.isEmpty else {
             collapseWorkItem?.cancel()
             collapseWorkItem = nil
@@ -385,6 +409,10 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         hoverWorkItem = nil
         collapseWorkItem?.cancel()
         collapseWorkItem = nil
+        menuActionCollapseWorkItem?.cancel()
+        menuActionCollapseWorkItem = nil
+        menuActionInitialMouseLocation = nil
+        isAwaitingMenuActionInteraction = false
     }
 
     private func observeOutsideClicks() {
@@ -401,7 +429,9 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
     private func observePanelEvents() {
         expandedPanel.onMouseEvent = { [weak self] event in
-            guard let self, event.type == .leftMouseDown else { return }
+            guard let self else { return }
+            self.registerMenuActionInteraction()
+            guard event.type == .leftMouseDown else { return }
             self.expandedPanel.allowsKeyActivation = true
             NSApp.activate(ignoringOtherApps: true)
             self.expandedPanel.makeKeyAndOrderFront(nil)
@@ -506,7 +536,64 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     }
 
     private func targetScreen() -> NSScreen? {
-        NotchGeometry.targetScreen()
+        if let presentationScreen,
+           let displayID = presentationScreen.displayID,
+           NSScreen.screens.contains(where: { $0.displayID == displayID }) {
+            return presentationScreen
+        }
+        return NotchGeometry.targetScreen()
+    }
+
+    private func presentFromMenu(createNewNote: Bool) {
+        let mouseLocation = NSEvent.mouseLocation
+        presentationScreen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
+            ?? NotchGeometry.targetScreen()
+
+        if createNewNote {
+            rememberEditorSelection()
+            appState.noteStore.addTab()
+            appState.notchNavigation.selection = .notes
+        }
+
+        expand(animated: true, activate: true)
+        scheduleMenuActionCollapse(from: mouseLocation)
+    }
+
+    private func scheduleMenuActionCollapse(from mouseLocation: NSPoint) {
+        menuActionCollapseWorkItem?.cancel()
+        menuActionInitialMouseLocation = mouseLocation
+        isAwaitingMenuActionInteraction = true
+
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.isAwaitingMenuActionInteraction else { return }
+            self.menuActionCollapseWorkItem = nil
+            self.menuActionInitialMouseLocation = nil
+            self.isAwaitingMenuActionInteraction = false
+            guard self.appState.fileShelfStore.items.isEmpty else { return }
+            self.collapse(animated: true)
+        }
+        menuActionCollapseWorkItem = work
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Interaction.menuActionGraceDelay,
+            execute: work
+        )
+    }
+
+    private func menuActionPointerMovedIntoPanel(_ mouseLocation: NSPoint) -> Bool {
+        guard expandedPanel.frame.contains(mouseLocation),
+              let initialLocation = menuActionInitialMouseLocation else { return false }
+        return hypot(
+            mouseLocation.x - initialLocation.x,
+            mouseLocation.y - initialLocation.y
+        ) >= Interaction.menuActionMovementThreshold
+    }
+
+    private func registerMenuActionInteraction() {
+        guard isAwaitingMenuActionInteraction else { return }
+        menuActionCollapseWorkItem?.cancel()
+        menuActionCollapseWorkItem = nil
+        menuActionInitialMouseLocation = nil
+        isAwaitingMenuActionInteraction = false
     }
 
     private func applyExpandedFrame(_ frame: NSRect, display: Bool) {
@@ -582,8 +669,11 @@ final class SkillNotchPanel: NSPanel {
             onEscape?()
             return
         }
-        if event.type == .leftMouseDown {
+        switch event.type {
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown, .scrollWheel:
             onMouseEvent?(event)
+        default:
+            break
         }
         super.sendEvent(event)
     }
