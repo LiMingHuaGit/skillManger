@@ -6,11 +6,21 @@ English | [简体中文](./README.zh-CN.md)
   <img src="./assets/readme/hero.svg" width="100%" alt="Skill Manager is a notch-style macOS workspace for AI skill lookup, quick notes, and temporary file staging.">
 </p>
 
-<p align="center">
-  <img src="./assets/readme/software-usage.gif" width="100%" alt="Skill Manager usage demo showing quick skill search, the focused library, and quick note capture.">
-</p>
-
 Skill Manager is a local-first macOS utility for people who work with reusable AI skills across Codex, Claude, ChatGPT, Cursor, and plugin-backed toolchains. Its signature surface is a notch-style workspace that keeps skill lookup, quick notes, and a temporary file shelf close to the current chat without forcing you back into Finder.
+
+## Feature tour
+
+Four small workflows make Skill Manager useful during an AI-assisted task: find the right skill, copy the right handoff, capture temporary notes, and keep working files close to the chat.
+
+| Focused skill library | Chat-ready skill references |
+| --- | --- |
+| <img src="./assets/readme/skill管理主面板.gif" width="370" alt="Skill Manager main panel showing the focused skill library and detail view."> | <img src="./assets/readme/快速引用skill.gif" width="370" alt="Skill Manager copying a skill reference for use in an AI chat."> |
+| Search, filter, and inspect local, system, project, and plugin-provided skills from one workspace. | Choose a target chat format and copy the right mention or prompt for Codex, Claude, ChatGPT, Cursor, or a custom template. |
+
+| Quick notes | File shelf |
+| --- | --- |
+| <img src="./assets/readme/便捷笔记.gif" width="370" alt="Skill Manager quick note panel being opened and edited with Markdown text."> | <img src="./assets/readme/文件暂存.gif" width="370" alt="Skill Manager file shelf receiving files dragged into the top workspace."> |
+| Capture temporary Markdown notes near the current chat while keeping the task context visible. | Drag files into a short-lived staging surface, then keep them close to the chat or next workflow. |
 
 ## What it does
 
