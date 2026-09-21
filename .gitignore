@@ -1,5 +1,7 @@
 .DS_Store
 .codex/
+__pycache__/
+*.py[cod]
 *.xcuserstate
 xcuserdata/
 *.xcuserdata/
