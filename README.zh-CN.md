@@ -6,6 +6,10 @@
   <img src="./assets/readme/hero.svg" width="100%" alt="Skill Manager 是一个刘海屏形式的 macOS 工作区，用于查找 AI Skill、快速记录备忘和临时暂存文件。">
 </p>
 
+<p align="center">
+  <img src="./assets/readme/software-usage.gif" width="100%" alt="Skill Manager 使用演示，展示 Skill 快捷搜索、主面板和快速记笔记。">
+</p>
+
 Skill Manager 是一个本地优先的 macOS 工具，面向在 Codex、Claude、ChatGPT、Cursor 以及插件工具链之间频繁使用可复用 AI Skill 的用户。它的核心亮点是刘海屏形式的工作区：把 Skill 查找、快速备忘、文件暂存区放在当前聊天和工作流附近，减少来回切换 Finder、编辑器和聊天窗口的成本。
 
 ## 它能做什么

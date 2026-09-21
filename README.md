@@ -6,6 +6,10 @@ English | [简体中文](./README.zh-CN.md)
   <img src="./assets/readme/hero.svg" width="100%" alt="Skill Manager is a notch-style macOS workspace for AI skill lookup, quick notes, and temporary file staging.">
 </p>
 
+<p align="center">
+  <img src="./assets/readme/software-usage.gif" width="100%" alt="Skill Manager usage demo showing quick skill search, the focused library, and quick note capture.">
+</p>
+
 Skill Manager is a local-first macOS utility for people who work with reusable AI skills across Codex, Claude, ChatGPT, Cursor, and plugin-backed toolchains. Its signature surface is a notch-style workspace that keeps skill lookup, quick notes, and a temporary file shelf close to the current chat without forcing you back into Finder.
 
 ## What it does
