@@ -712,6 +712,7 @@
       }
     },
     "Launch" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -728,6 +729,7 @@
       }
     },
     "Launch at Login" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -744,6 +746,7 @@
       }
     },
     "Launch at login failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -760,6 +763,7 @@
       }
     },
     "Launch at login may need approval in System Settings." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1711,22 +1715,6 @@
         }
       }
     },
-    "Start Skill Manager automatically when you sign in." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start Skill Manager automatically when you sign in."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "登录时自动启动 Skill Manager。"
-          }
-        }
-      }
-    },
     "SKILL.md preview" : {
       "localizations" : {
         "en" : {
@@ -1857,6 +1845,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "独立 Skills"
+          }
+        }
+      }
+    },
+    "Start Skill Manager automatically when you sign in." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Skill Manager automatically when you sign in."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录时自动启动 Skill Manager。"
           }
         }
       }
