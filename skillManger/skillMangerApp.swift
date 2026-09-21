@@ -2,7 +2,7 @@
 //  skillMangerApp.swift
 //  skillManger
 //
-//  Created by ming on 2026/7/14.
+//  Created by Skill Manager contributors on 2026/7/14.
 //
 
 import AppKit

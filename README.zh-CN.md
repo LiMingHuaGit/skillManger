@@ -200,7 +200,7 @@ python3 skills/ming-skill-source-manager/scripts/manage_sources.py audit \
 
 ## 项目说明
 
-- Bundle identifier 是 `liminghua.skillManger`。
+- Bundle identifier 是 `com.example.skillManger`。
 - Xcode 项目里的产品名当前为 `skillManger`。
 - MVP 范围聚焦本地 Skill 库管理和聊天交接，不包含 marketplace 发布或完整 `SKILL.md` 编辑器。
 - 当前仓库尚未发布 license 文件。

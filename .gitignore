@@ -1,3 +1,9 @@
+.DS_Store
+.codex/
+*.xcuserstate
+xcuserdata/
+*.xcuserdata/
+*.xcuserdatad/
 .superpowers/
 build/
 dist/

@@ -13,7 +13,7 @@ enum PerformanceDiagnostics {
     static let indexing = Logger(subsystem: subsystem, category: "IndexingPerformance")
     static let recommendations = Logger(subsystem: subsystem, category: "RecommendationPerformance")
 
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "liminghua.skillManger"
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.example.skillManger"
 
     static func start() -> UInt64 {
         DispatchTime.now().uptimeNanoseconds

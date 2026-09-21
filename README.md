@@ -200,7 +200,7 @@ Do not write tokens, secrets, or credential-bearing clone URLs into `SOURCE.md`.
 
 ## Project notes
 
-- The bundle identifier is `liminghua.skillManger`.
+- The bundle identifier is `com.example.skillManger`.
 - The product name in the Xcode project is currently `skillManger`.
 - MVP scope is intentionally focused on local library management and chat handoff, not marketplace publishing or full `SKILL.md` editing.
 - The repository currently does not publish a license file.

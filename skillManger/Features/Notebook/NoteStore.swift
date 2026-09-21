@@ -42,7 +42,7 @@ final class NoteStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let archiveURL: URL?
-    private let persistenceQueue = DispatchQueue(label: "liminghua.skillManager.notes.persistence")
+    private let persistenceQueue = DispatchQueue(label: "com.example.skillManager.notes.persistence")
     private var pendingSave: DispatchWorkItem?
     private var recentlyDeletedNote: DeletedNote?
 

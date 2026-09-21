@@ -14,9 +14,9 @@ struct SkillManagerDomainTests {
     @Test func codexAndClaudeTemplatesRenderSkillReferences() throws {
         let skill = Skill.fixture(
             name: "local-dependency-manager",
-            description: "Use Ming's local zsh toolchain.",
+            description: "Use a local zsh toolchain.",
             sourceType: .local,
-            sourcePath: "/Users/ming/.codex/skills/local-dependency-manager/SKILL.md"
+            sourcePath: "/Users/example/.codex/skills/local-dependency-manager/SKILL.md"
         )
 
         let codex = try CopyTemplateEngine.render(
@@ -31,7 +31,7 @@ struct SkillManagerDomainTests {
             .replacingOccurrences(of: "$skill_name", with: skill.name)
             .replacingOccurrences(of: "$skill_path", with: skill.referencePath))
         #expect(claude.contains("Use the \"local-dependency-manager\" skill for this task."))
-        #expect(claude.contains("Skill path: /Users/ming/.codex/skills/local-dependency-manager/SKILL.md"))
+        #expect(claude.contains("Skill path: /Users/example/.codex/skills/local-dependency-manager/SKILL.md"))
         #expect(cursor.contains("Use this skill context while working in the codebase:"))
     }
 
@@ -84,33 +84,33 @@ struct SkillManagerDomainTests {
             name: "skill-creator",
             description: "Create Codex skills.",
             sourceType: .system,
-            sourcePath: "/Users/ming/.codex/skills/.system/skill-creator/SKILL.md"
+            sourcePath: "/Users/example/.codex/skills/.system/skill-creator/SKILL.md"
         )
         let curatedSkill = Skill.fixture(
             name: "appkit-interop",
             description: "Bridge SwiftUI and AppKit.",
             sourceType: .plugin,
-            sourcePath: "/Users/ming/.codex/plugins/cache/openai-api-curated/build-macos-apps/1.0/skills/appkit-interop/SKILL.md"
+            sourcePath: "/Users/example/.codex/plugins/cache/openai-api-curated/build-macos-apps/1.0/skills/appkit-interop/SKILL.md"
         )
         let installedSkill = Skill.fixture(
             name: "local-dependency-manager",
             description: "Use local shell tools.",
             sourceType: .local,
-            sourcePath: "/Users/ming/.codex/skills/local-dependency-manager/SKILL.md"
+            sourcePath: "/Users/example/.codex/skills/local-dependency-manager/SKILL.md"
         )
 
         let selfCreated = Skill.fixture(
-            name: "ming-helper",
+            name: "local-helper",
             description: "A local helper.",
             sourceType: .local,
             provenance: SkillProvenance(
                 origin: "User-created local skill",
-                group: "ming-local-skills",
-                groupPrefix: "ming-",
-                creator: "Ming",
+                group: "local-user-skills",
+                groupPrefix: "local-",
+                creator: "Local User",
                 authorMetadata: nil,
                 repository: "Not imported from GitHub",
-                sourceFilePath: "/tmp/ming-helper/SOURCE.md"
+                sourceFilePath: "/tmp/local-helper/SOURCE.md"
             )
         )
 
@@ -118,7 +118,7 @@ struct SkillManagerDomainTests {
         #expect(curatedSkill.origin == .thirdPartyInstalled)
         #expect(installedSkill.origin == .thirdPartyInstalled)
         #expect(selfCreated.origin == .selfCreated)
-        #expect(selfCreated.group == "ming-local-skills")
+        #expect(selfCreated.group == "local-user-skills")
     }
 
     @Test func skillIndexerReadsSourceMetadata() throws {
@@ -155,10 +155,10 @@ struct SkillManagerDomainTests {
             provenance: .fixture(origin: "Third-party skill", group: "lark-skill-suite")
         )
         let local = Skill.fixture(
-            name: "ming-helper",
+            name: "local-helper",
             description: "Local helper.",
             sourceType: .local,
-            provenance: .fixture(origin: "User-created local skill", group: "ming-local-skills")
+            provenance: .fixture(origin: "User-created local skill", group: "local-user-skills")
         )
         let store = SkillLibraryStore(preferences: InMemorySkillPreferences(), initialSkills: [system, lark, local])
 
@@ -166,9 +166,9 @@ struct SkillManagerDomainTests {
         #expect(store.visibleSkills.map(\.name) == ["lark-doc"])
 
         store.selectedOrigin = nil
-        store.selectedGroup = "ming-local-skills"
-        #expect(store.visibleSkills.map(\.name) == ["ming-helper"])
-        #expect(store.availableGroups == ["lark-skill-suite", "ming-local-skills"])
+        store.selectedGroup = "local-user-skills"
+        #expect(store.visibleSkills.map(\.name) == ["local-helper"])
+        #expect(store.availableGroups == ["lark-skill-suite", "local-user-skills"])
     }
 
     @Test func classifierCategorizesSkillsByWeightedKeywords() throws {
@@ -301,16 +301,16 @@ struct SkillManagerDomainTests {
         let store = SkillLibraryStore(
             preferences: InMemorySkillPreferences(),
             initialSkills: [
-                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .local, sourcePath: "/Users/ming/.codex/skills/appkit-interop/SKILL.md"),
-                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit narrowly.", sourceType: .project, sourcePath: "/Users/ming/project/.agents/skills/appkit-interop/SKILL.md"),
-                .fixture(name: "appkit-interop", description: "Plugin implementation.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/appkit-interop/SKILL.md")
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .local, sourcePath: "/Users/example/.codex/skills/appkit-interop/SKILL.md"),
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit narrowly.", sourceType: .project, sourcePath: "/Users/example/project/.agents/skills/appkit-interop/SKILL.md"),
+                .fixture(name: "appkit-interop", description: "Plugin implementation.", sourceType: .plugin, sourcePath: "/Users/example/.codex/plugins/cache/openai-curated/build-macos-apps/appkit-interop/SKILL.md")
             ]
         )
 
         let selected = try #require(store.skills.first { $0.sourceType == .local })
         let duplicates = store.duplicateSkills(for: selected)
 
-        #expect(duplicates.map(\.sourcePath) == ["/Users/ming/project/.agents/skills/appkit-interop/SKILL.md"])
+        #expect(duplicates.map(\.sourcePath) == ["/Users/example/project/.agents/skills/appkit-interop/SKILL.md"])
     }
 
     @Test func storeDeletesSkillDirectoryAndCleansReferences() throws {
@@ -386,10 +386,10 @@ struct SkillManagerDomainTests {
         let store = SkillLibraryStore(
             preferences: InMemorySkillPreferences(),
             initialSkills: [
-                .fixture(name: "local-dependency-manager", description: "Use local tools.", sourceType: .local, sourcePath: "/Users/ming/.codex/skills/local-dependency-manager/SKILL.md"),
-                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b/skills/appkit-interop/SKILL.md"),
-                .fixture(name: "swiftui-patterns", description: "Build SwiftUI views.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b/skills/swiftui-patterns/SKILL.md"),
-                .fixture(name: "audit", description: "Audit product flows.", sourceType: .plugin, sourcePath: "/Users/ming/.codex/plugins/cache/role-specific-plugins/product-design/0.1.50/skills/audit/SKILL.md")
+                .fixture(name: "local-dependency-manager", description: "Use local tools.", sourceType: .local, sourcePath: "/Users/example/.codex/skills/local-dependency-manager/SKILL.md"),
+                .fixture(name: "appkit-interop", description: "Bridge SwiftUI and AppKit.", sourceType: .plugin, sourcePath: "/Users/example/.codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b/skills/appkit-interop/SKILL.md"),
+                .fixture(name: "swiftui-patterns", description: "Build SwiftUI views.", sourceType: .plugin, sourcePath: "/Users/example/.codex/plugins/cache/openai-curated/build-macos-apps/11c74d6b/skills/swiftui-patterns/SKILL.md"),
+                .fixture(name: "audit", description: "Audit product flows.", sourceType: .plugin, sourcePath: "/Users/example/.codex/plugins/cache/role-specific-plugins/product-design/0.1.50/skills/audit/SKILL.md")
             ]
         )
 
@@ -404,7 +404,7 @@ struct SkillManagerDomainTests {
     @Test func storePersistsRootsAndEditableTemplates() throws {
         let preferences = InMemorySkillPreferences()
         let customRoot = SkillRoot(
-            path: "/Users/ming/.codex/skills",
+            path: "/Users/example/.codex/skills",
             enabled: true,
             sourceType: .local,
             lastIndexedAt: nil,
@@ -420,7 +420,7 @@ struct SkillManagerDomainTests {
         )
         store.addCustomTemplate(named: "Raycast", basedOn: .plainText)
 
-        #expect(preferences.roots == [SkillRoot(path: "/Users/ming/.codex/skills", enabled: false, sourceType: .local, lastIndexedAt: nil, lastError: nil)])
+        #expect(preferences.roots == [SkillRoot(path: "/Users/example/.codex/skills", enabled: false, sourceType: .local, lastIndexedAt: nil, lastError: nil)])
         #expect(preferences.templates.first { $0.id == PlatformTemplate.plainText.id }?.platformName == "Plain Text Edited")
         #expect(preferences.templates.first { $0.id == PlatformTemplate.plainText.id }?.body == "Skill $skill_name lives at $skill_path")
         #expect(preferences.templates.contains { $0.platformName == "Raycast" && $0.isBuiltIn == false })
@@ -487,7 +487,7 @@ struct SkillManagerDomainTests {
             id: "thread-1",
             title: "修复 macOS 刘海窗口 hover 收起和 SwiftUI 布局",
             preview: "窗口展开不居中，需要调整 NSPanel frame 和 SwiftUI view layout",
-            cwd: "/Users/ming/myProductWorkspace/ios/skillManger",
+            cwd: "/Users/example/myProductWorkspace/ios/skillManger",
             updatedAt: Date(timeIntervalSince1970: 1_784_000_000),
             recentUserMessages: ["参考 boring.notch 的 window management 实现"]
         )
@@ -532,7 +532,7 @@ struct SkillManagerDomainTests {
             id: "thread-1",
             title: "后端",
             preview: "后端",
-            cwd: "/Users/ming/xcmgWorkSpace/国内mes/code/new/mom-backend",
+            cwd: "/Users/example/xcmgWorkSpace/国内mes/code/new/mom-backend",
             updatedAt: Date(timeIntervalSince1970: 1_784_000_000),
             recentUserMessages: []
         )
@@ -571,12 +571,12 @@ struct SkillManagerDomainTests {
         """, database: database)
         try executeSQL("""
         INSERT INTO thread_items (thread_id, turn_id, item_id, rollout_ordinal, created_at_ms, item_json, item_type)
-        VALUES ('thread-1', 'turn-1', 'cmd-1', 1, 1000, '{"type":"commandExecution","cwd":"/Users/ming/work/mom-backend"}', 'commandExecution');
+        VALUES ('thread-1', 'turn-1', 'cmd-1', 1, 1000, '{"type":"commandExecution","cwd":"/Users/example/work/mom-backend"}', 'commandExecution');
         """, database: database)
 
         let contexts = try CodexSessionContextReader(codexHomeURL: codexDirectory).recentContexts(limit: 1)
 
-        #expect(contexts.first?.cwd == "/Users/ming/work/mom-backend")
+        #expect(contexts.first?.cwd == "/Users/example/work/mom-backend")
         #expect(contexts.first?.displayTitle == "mom-backend / 后端")
     }
 }

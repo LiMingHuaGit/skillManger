@@ -3,7 +3,7 @@ set -euo pipefail
 
 MODE="${1:-run}"
 APP_NAME="skillManger"
-BUNDLE_ID="liminghua.skillManger"
+BUNDLE_ID="com.example.skillManger"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/build/DerivedData"
