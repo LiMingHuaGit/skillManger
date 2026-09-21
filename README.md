@@ -8,31 +8,19 @@ English | [简体中文](./README.zh-CN.md)
 
 Skill Manager is a local-first macOS utility for people who work with reusable AI skills across Codex, Claude, ChatGPT, Cursor, and plugin-backed toolchains. Its signature surface is a notch-style workspace that keeps skill lookup, quick notes, and a temporary file shelf close to the current chat without forcing you back into Finder.
 
-## Feature demos
+## Feature tour
 
-**Focused skill library:** search, filter, and inspect local, system, project, and plugin-provided skills from one workspace.
+Four small workflows make Skill Manager useful during an AI-assisted task: find the right skill, copy the right handoff, capture temporary notes, and keep working files close to the chat.
 
-<p align="center">
-  <img src="./assets/readme/demo-skill-library.gif" width="100%" alt="Skill Manager focused library demo showing skill search, recommendations, and detail selection.">
-</p>
+| Focused skill library | Chat-ready skill references |
+| --- | --- |
+| <img src="./assets/readme/skill管理主面板.gif" width="370" alt="Skill Manager main panel showing the focused skill library and detail view."> | <img src="./assets/readme/快速引用skill.gif" width="370" alt="Skill Manager copying a skill reference for use in an AI chat."> |
+| Search, filter, and inspect local, system, project, and plugin-provided skills from one workspace. | Choose a target chat format and copy the right mention or prompt for Codex, Claude, ChatGPT, Cursor, or a custom template. |
 
-**Chat handoff:** choose the target chat format and copy the right skill mention or prompt for the current assistant.
-
-<p align="center">
-  <img src="./assets/readme/demo-chat-handoff.gif" width="100%" alt="Skill Manager chat handoff demo showing source filters, platform templates, and copied skill references.">
-</p>
-
-**Quick notes:** capture temporary Markdown notes near the current chat while keeping the task context visible.
-
-<p align="center">
-  <img src="./assets/readme/demo-quick-notes.gif" width="100%" alt="Skill Manager quick notes demo showing a note panel opening and Markdown text being edited.">
-</p>
-
-**File shelf:** drag files into a short-lived staging surface, then keep them close to the chat or next workflow.
-
-<p align="center">
-  <img src="./assets/readme/demo-file-shelf.gif" width="100%" alt="Skill Manager file shelf demo showing files being dragged into the top workspace shelf.">
-</p>
+| Quick notes | File shelf |
+| --- | --- |
+| <img src="./assets/readme/便捷笔记.gif" width="370" alt="Skill Manager quick note panel being opened and edited with Markdown text."> | <img src="./assets/readme/文件暂存.gif" width="370" alt="Skill Manager file shelf receiving files dragged into the top workspace."> |
+| Capture temporary Markdown notes near the current chat while keeping the task context visible. | Drag files into a short-lived staging surface, then keep them close to the chat or next workflow. |
 
 ## What it does
 
