@@ -6,11 +6,33 @@
   <img src="./assets/readme/hero.svg" width="100%" alt="Skill Manager 是一个刘海屏形式的 macOS 工作区，用于查找 AI Skill、快速记录备忘和临时暂存文件。">
 </p>
 
+Skill Manager 是一个本地优先的 macOS 工具，面向在 Codex、Claude、ChatGPT、Cursor 以及插件工具链之间频繁使用可复用 AI Skill 的用户。它的核心亮点是刘海屏形式的工作区：把 Skill 查找、快速备忘、文件暂存区放在当前聊天和工作流附近，减少来回切换 Finder、编辑器和聊天窗口的成本。
+
+## 主要功能演示
+
+**聚焦 Skill 库：** 在同一个工作区搜索、筛选并查看本地、系统、项目和插件提供的 Skill。
+
 <p align="center">
-  <img src="./assets/readme/software-usage.gif" width="100%" alt="Skill Manager 使用演示，展示 Skill 快捷搜索、主面板和快速记笔记。">
+  <img src="./assets/readme/demo-skill-library.gif" width="100%" alt="Skill Manager 聚焦 Skill 库演示，展示搜索、推荐和详情选择。">
 </p>
 
-Skill Manager 是一个本地优先的 macOS 工具，面向在 Codex、Claude、ChatGPT、Cursor 以及插件工具链之间频繁使用可复用 AI Skill 的用户。它的核心亮点是刘海屏形式的工作区：把 Skill 查找、快速备忘、文件暂存区放在当前聊天和工作流附近，减少来回切换 Finder、编辑器和聊天窗口的成本。
+**聊天交接：** 选择目标聊天格式，复制适合当前助手的 Skill mention 或 prompt。
+
+<p align="center">
+  <img src="./assets/readme/demo-chat-handoff.gif" width="100%" alt="Skill Manager 聊天交接演示，展示来源筛选、平台模板和复制 Skill 引用。">
+</p>
+
+**快速备忘：** 在当前聊天附近记录临时 Markdown 笔记，同时保留任务上下文。
+
+<p align="center">
+  <img src="./assets/readme/demo-quick-notes.gif" width="100%" alt="Skill Manager 快速备忘演示，展示笔记面板打开并编辑 Markdown 文本。">
+</p>
+
+**文件暂存区：** 将文件拖入短期暂存区域，让它们保持在聊天或下一步工作流附近。
+
+<p align="center">
+  <img src="./assets/readme/demo-file-shelf.gif" width="100%" alt="Skill Manager 文件暂存区演示，展示文件被拖入顶部工作区暂存。">
+</p>
 
 ## 它能做什么
 

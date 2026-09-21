@@ -6,11 +6,33 @@ English | [简体中文](./README.zh-CN.md)
   <img src="./assets/readme/hero.svg" width="100%" alt="Skill Manager is a notch-style macOS workspace for AI skill lookup, quick notes, and temporary file staging.">
 </p>
 
+Skill Manager is a local-first macOS utility for people who work with reusable AI skills across Codex, Claude, ChatGPT, Cursor, and plugin-backed toolchains. Its signature surface is a notch-style workspace that keeps skill lookup, quick notes, and a temporary file shelf close to the current chat without forcing you back into Finder.
+
+## Feature demos
+
+**Focused skill library:** search, filter, and inspect local, system, project, and plugin-provided skills from one workspace.
+
 <p align="center">
-  <img src="./assets/readme/software-usage.gif" width="100%" alt="Skill Manager usage demo showing quick skill search, the focused library, and quick note capture.">
+  <img src="./assets/readme/demo-skill-library.gif" width="100%" alt="Skill Manager focused library demo showing skill search, recommendations, and detail selection.">
 </p>
 
-Skill Manager is a local-first macOS utility for people who work with reusable AI skills across Codex, Claude, ChatGPT, Cursor, and plugin-backed toolchains. Its signature surface is a notch-style workspace that keeps skill lookup, quick notes, and a temporary file shelf close to the current chat without forcing you back into Finder.
+**Chat handoff:** choose the target chat format and copy the right skill mention or prompt for the current assistant.
+
+<p align="center">
+  <img src="./assets/readme/demo-chat-handoff.gif" width="100%" alt="Skill Manager chat handoff demo showing source filters, platform templates, and copied skill references.">
+</p>
+
+**Quick notes:** capture temporary Markdown notes near the current chat while keeping the task context visible.
+
+<p align="center">
+  <img src="./assets/readme/demo-quick-notes.gif" width="100%" alt="Skill Manager quick notes demo showing a note panel opening and Markdown text being edited.">
+</p>
+
+**File shelf:** drag files into a short-lived staging surface, then keep them close to the chat or next workflow.
+
+<p align="center">
+  <img src="./assets/readme/demo-file-shelf.gif" width="100%" alt="Skill Manager file shelf demo showing files being dragged into the top workspace shelf.">
+</p>
 
 ## What it does
 
