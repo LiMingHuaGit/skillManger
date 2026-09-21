@@ -1,0 +1,130 @@
+import AppKit
+import CoreGraphics
+
+struct NotchLayout: Equatable {
+    let notchSize: NSSize
+    let compactSize: NSSize
+    let expandedSize: NSSize
+    let compactTopOffset: CGFloat
+    let expandedTopOffset: CGFloat
+}
+
+extension NSScreen {
+    var displayID: CGDirectDisplayID? {
+        guard let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+            return nil
+        }
+
+        return CGDirectDisplayID(number.uint32Value)
+    }
+
+    var isBuiltInDisplay: Bool {
+        guard let displayID else { return false }
+        return CGDisplayIsBuiltin(displayID) != 0
+    }
+
+    var measuredNotchSize: NSSize {
+        guard #available(macOS 12.0, *), safeAreaInsets.top > 0 else {
+            return .zero
+        }
+
+        guard let leftArea = auxiliaryTopLeftArea, let rightArea = auxiliaryTopRightArea else {
+            return .zero
+        }
+
+        let notchWidth = frame.width - leftArea.width - rightArea.width
+        guard notchWidth > 0, notchWidth < frame.width else {
+            return .zero
+        }
+
+        return NSSize(width: notchWidth, height: safeAreaInsets.top)
+    }
+}
+
+@MainActor
+enum NotchGeometry {
+    static let fileDropTargetExtension: CGFloat = 28
+    static let minimumExpandedSize = NSSize(width: 560, height: 440)
+    static let expandedShadowHorizontalPadding: CGFloat = 32
+    static let expandedShadowBottomPadding: CGFloat = 44
+
+    static func targetScreen() -> NSScreen? {
+        NSScreen.screens.first(where: \.isBuiltInDisplay)
+            ?? NSScreen.screens.first { $0.measuredNotchSize != .zero }
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+    }
+
+    static func layout(for screen: NSScreen?, preferredExpandedSize: NSSize? = nil) -> NotchLayout {
+        let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let measured = screen?.measuredNotchSize ?? .zero
+        let fallbackNotch = NSSize(width: 210, height: 32)
+        let notch = measured == .zero ? fallbackNotch : measured
+
+        let compactWidth = min(max(notch.width - 6, 182), 238)
+        let compactHeight = min(max(notch.height + 2, 32), 38)
+        let defaultExpandedSize = NSSize(
+            width: min(max(notch.width + 500, 720), 780),
+            height: min(max(notch.height + 548, 580), 640)
+        )
+        let expandedSize = clampedExpandedSize(
+            preferredExpandedSize ?? defaultExpandedSize,
+            in: screenFrame
+        )
+
+        return NotchLayout(
+            notchSize: notch,
+            compactSize: NSSize(width: compactWidth, height: compactHeight),
+            expandedSize: expandedSize,
+            compactTopOffset: 0,
+            expandedTopOffset: 6
+        )
+    }
+
+    static func clampedExpandedSize(_ size: NSSize, in screenFrame: NSRect) -> NSSize {
+        let maximumWidth = max(
+            minimumExpandedSize.width,
+            screenFrame.width - 36 - expandedShadowHorizontalPadding * 2
+        )
+        let maximumHeight = max(
+            minimumExpandedSize.height,
+            screenFrame.height - 72 - expandedShadowBottomPadding
+        )
+        return NSSize(
+            width: min(max(size.width, minimumExpandedSize.width), maximumWidth),
+            height: min(max(size.height, minimumExpandedSize.height), maximumHeight)
+        )
+    }
+
+    static func activationFrame(for layout: NotchLayout, in screenFrame: NSRect) -> NSRect {
+        let activationSize = NSSize(
+            width: layout.notchSize.width,
+            height: layout.compactSize.height
+        )
+        return topCenteredFrame(
+            for: activationSize,
+            topY: screenFrame.maxY + layout.compactTopOffset,
+            in: screenFrame
+        )
+    }
+
+    static func fileDropFrame(for layout: NotchLayout, in screenFrame: NSRect) -> NSRect {
+        var frame = activationFrame(for: layout, in: screenFrame)
+        frame.origin.y -= fileDropTargetExtension
+        frame.size.height += fileDropTargetExtension
+        return frame
+    }
+
+    static func topCenteredFrame(
+        for size: NSSize,
+        topY: CGFloat,
+        in screenFrame: NSRect
+    ) -> NSRect {
+        NSRect(
+            x: screenFrame.midX - size.width / 2,
+            y: topY - size.height,
+            width: size.width,
+            height: size.height
+        )
+    }
+}

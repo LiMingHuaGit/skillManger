@@ -1,0 +1,31 @@
+{
+  "width": 960,
+  "fps": 24,
+  "duration": 5.0,
+  "colors": 192,
+  "dither": "none",
+  "clip_to_base_alpha": true,
+  "max_size_mb": 2.0,
+  "layers": [
+    {
+      "id": "workspace-shell",
+      "enter": {"start": 0.25, "end": 1.05, "from": [0, -24]},
+      "exit": {"start": 4.25, "end": 4.92, "to": [0, -18]}
+    },
+    {
+      "id": "skills-card",
+      "enter": {"start": 0.72, "end": 1.42, "from": [0, 24]},
+      "exit": {"start": 4.25, "end": 4.92, "to": [0, 16]}
+    },
+    {
+      "id": "notes-card",
+      "enter": {"start": 1.02, "end": 1.72, "from": [0, 24]},
+      "exit": {"start": 4.25, "end": 4.92, "to": [0, 16]}
+    },
+    {
+      "id": "files-card",
+      "enter": {"start": 1.32, "end": 2.02, "from": [0, 24]},
+      "exit": {"start": 4.25, "end": 4.92, "to": [0, 16]}
+    }
+  ]
+}
