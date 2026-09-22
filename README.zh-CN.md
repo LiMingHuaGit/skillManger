@@ -85,6 +85,10 @@ When to use it: $description
 
 Skill Manager 会显示日常维护信息，但不会把自己变成完整编辑器。索引条目可以显示健康、缺少元数据、文件缺失、名称重复、不可读等状态。存在 `SOURCE.md` 时，应用会展示来源记录，帮助区分第三方 Skill、系统 Skill 和自己创建的 Skill。
 
+## 致谢
+
+Skill Manager 引用并改造了 [NotchNotes](https://github.com/oil-oil/NotchNotes) 中刘海屏工作区相关的部分实现。感谢 NotchNotes 项目提供的实现思路和开源工作。
+
 ## 配套 Skill
 
 本仓库内置配套 Skill：[`$ming-skill-source-manager`](./skills/ming-skill-source-manager/SKILL.md)。使用它为已安装 Skill 创建和审计 `SOURCE.md` 来源记录，然后在 Skill Manager 里浏览结果、识别第三方或未知来源，并复制正确的 Skill 引用到聊天中。

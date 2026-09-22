@@ -85,6 +85,10 @@ Templates are stored locally, can be edited, and can be duplicated for new platf
 
 Skill Manager keeps routine maintenance visible without turning the app into a full editor. Indexed entries can show health states for healthy skills, missing metadata, missing files, duplicate names, and unreadable sources. Provenance records such as `SOURCE.md` are displayed when available so third-party, system, and self-created skills are easier to distinguish.
 
+## Acknowledgements
+
+Skill Manager references and adapts parts of the notch-style workspace implementation from [NotchNotes](https://github.com/oil-oil/NotchNotes). Thanks to the NotchNotes project for the original implementation ideas and open-source work.
+
 ## Companion skill
 
 Skill Manager ships with the companion skill [`$ming-skill-source-manager`](./skills/ming-skill-source-manager/SKILL.md). Use that skill to create and audit `SOURCE.md` provenance records for installed skills, then use Skill Manager to browse the results, spot third-party or unknown origins, and copy the right skill reference into chat.
