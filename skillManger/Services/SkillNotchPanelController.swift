@@ -617,7 +617,14 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private func applyExpandedFrame(_ frame: NSRect, display: Bool) {
         isApplyingExpandedFrame = true
         expandedPanel.setFrame(frame, display: display)
+        synchronizeExpandedHostFrame(to: frame.size)
         isApplyingExpandedFrame = false
+    }
+
+    private func synchronizeExpandedHostFrame(to size: NSSize) {
+        let bounds = NSRect(origin: .zero, size: size)
+        expandedPanel.contentView?.frame = bounds
+        expandedHost?.frame = bounds
     }
 
     private func resizeExpandedPanel(to requestedSize: NSSize, isFinal: Bool) {

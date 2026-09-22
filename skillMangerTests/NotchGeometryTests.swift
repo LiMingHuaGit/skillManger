@@ -45,4 +45,26 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
+    func testExpandedWindowFrameStaysCenteredAfterResize() {
+        let screenFrame = NSRect(x: 0, y: 0, width: 1728, height: 1117)
+        let contentSize = NSSize(width: 1180, height: 720)
+        let windowSize = NSSize(
+            width: contentSize.width + NotchGeometry.expandedShadowHorizontalPadding * 2,
+            height: contentSize.height + NotchGeometry.expandedShadowBottomPadding
+        )
+
+        let frame = NotchGeometry.topCenteredFrame(
+            for: windowSize,
+            topY: screenFrame.maxY + 6,
+            in: screenFrame
+        )
+
+        XCTAssertEqual(frame.midX, screenFrame.midX)
+        XCTAssertEqual(frame.minX + NotchGeometry.expandedShadowHorizontalPadding, 274)
+        XCTAssertEqual(
+            screenFrame.maxX - (frame.maxX - NotchGeometry.expandedShadowHorizontalPadding),
+            274
+        )
+    }
+
 }
