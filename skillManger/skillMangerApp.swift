@@ -121,6 +121,10 @@ private struct SkillMenuBarLabel: View {
 }
 
 final class SkillManagerAppDelegate: NSObject, NSApplicationDelegate {
+    private let notchHotKeyController = NotchPanelHotKeyController(
+        settingsStore: SkillManagerAppState.shared.notchSettings
+    )
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         SkillNotchPanelController.shared.showNotch()

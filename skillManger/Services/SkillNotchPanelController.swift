@@ -66,6 +66,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     private var menuTrackingDepth = 0
     private var isApplyingExpandedFrame = false
     private var isResizingExpandedPanel = false
+    private var isShortcutPresentationPinned = false
 
     init(appState: SkillManagerAppState) {
         self.appState = appState
@@ -107,8 +108,9 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
         expandedPanel.orderOut(nil)
     }
 
-    func expand(animated: Bool = true, activate: Bool = false) {
+    func expand(animated: Bool = true, activate: Bool = false, pinsUntilShortcut: Bool = false) {
         cancelPendingTransitions()
+        isShortcutPresentationPinned = pinsUntilShortcut
         let layout = currentLayout()
         updateState(for: layout)
         rebuildContent(layout: layout)
@@ -142,6 +144,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
     func collapse(animated: Bool = true) {
         guard notchState.isExpanded else { return }
         cancelPendingTransitions()
+        isShortcutPresentationPinned = false
         rememberEditorSelection()
 
         if animated {
@@ -173,6 +176,16 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
     func showNotchFromMenu() {
         presentFromMenu(createNewNote: false)
+    }
+
+    func toggleFromShortcut() {
+        if notchState.isExpanded {
+            collapse(animated: true)
+            return
+        }
+
+        presentationScreen = screenContainingMouse()
+        expand(animated: true, activate: true, pinsUntilShortcut: true)
     }
 
     func createNoteFromMenu() {
@@ -361,6 +374,12 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
             return
         }
 
+        guard !isShortcutPresentationPinned else {
+            collapseWorkItem?.cancel()
+            collapseWorkItem = nil
+            return
+        }
+
         guard appState.notchSettings.triggerMode == .hover,
               menuTrackingDepth == 0,
               !appState.editorInteractionState.hasKeyboardFocus() else { return }
@@ -417,6 +436,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
             [weak self] _ in
             Task { @MainActor in
                 guard let self, self.notchState.isExpanded else { return }
+                guard !self.isShortcutPresentationPinned else { return }
                 guard self.appState.fileShelfStore.items.isEmpty else { return }
                 guard !self.isPointInExpandedStayRegion(NSEvent.mouseLocation) else { return }
                 self.collapse(animated: true)
@@ -564,8 +584,7 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
     private func presentFromMenu(createNewNote: Bool) {
         let mouseLocation = NSEvent.mouseLocation
-        presentationScreen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
-            ?? NotchGeometry.targetScreen()
+        presentationScreen = screen(containing: mouseLocation)
 
         if createNewNote {
             rememberEditorSelection()
@@ -575,6 +594,15 @@ final class SkillNotchPanelController: NSObject, NSWindowDelegate {
 
         expand(animated: true, activate: true)
         scheduleMenuActionCollapse(from: mouseLocation)
+    }
+
+    private func screenContainingMouse() -> NSScreen? {
+        screen(containing: NSEvent.mouseLocation)
+    }
+
+    private func screen(containing point: NSPoint) -> NSScreen? {
+        NSScreen.screens.first(where: { $0.frame.contains(point) })
+            ?? NotchGeometry.targetScreen()
     }
 
     private func scheduleMenuActionCollapse(from mouseLocation: NSPoint) {

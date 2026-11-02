@@ -1,4 +1,6 @@
+import AppKit
 import Combine
+import Carbon.HIToolbox
 import Foundation
 
 enum NotchTriggerMode: String, CaseIterable, Identifiable {
@@ -75,6 +77,83 @@ enum ShelfFileTransferMode: String, CaseIterable, Identifiable {
     }
 }
 
+struct NotchPanelShortcut: Equatable {
+    var keyCode: UInt32
+    var modifiers: NSEvent.ModifierFlags
+
+    static let defaultShortcut = NotchPanelShortcut(keyCode: 120, modifiers: [])
+
+    var displayTitle: String {
+        let modifierTitle = shortcutModifierTitle
+        let keyTitle = Self.keyTitle(for: keyCode)
+        return modifierTitle.isEmpty ? keyTitle : modifierTitle + keyTitle
+    }
+
+    var isFunctionKey: Bool {
+        (96...111).contains(keyCode) || [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111, 105, 107, 113, 106, 64, 79, 80, 90].contains(keyCode)
+    }
+
+    var registrationModifiers: UInt32 {
+        var carbonModifiers: UInt32 = 0
+        if modifiers.contains(.command) { carbonModifiers |= UInt32(cmdKey) }
+        if modifiers.contains(.option) { carbonModifiers |= UInt32(optionKey) }
+        if modifiers.contains(.control) { carbonModifiers |= UInt32(controlKey) }
+        if modifiers.contains(.shift) { carbonModifiers |= UInt32(shiftKey) }
+        return carbonModifiers
+    }
+
+    static func from(event: NSEvent) -> NotchPanelShortcut? {
+        let filteredModifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        let shortcut = NotchPanelShortcut(keyCode: UInt32(event.keyCode), modifiers: filteredModifiers)
+        guard shortcut.isFunctionKey || filteredModifiers.isEmpty == false else { return nil }
+        return shortcut
+    }
+
+    private var shortcutModifierTitle: String {
+        var title = ""
+        if modifiers.contains(.control) { title += "^" }
+        if modifiers.contains(.option) { title += "⌥" }
+        if modifiers.contains(.shift) { title += "⇧" }
+        if modifiers.contains(.command) { title += "⌘" }
+        return title
+    }
+
+    private static func keyTitle(for keyCode: UInt32) -> String {
+        switch keyCode {
+        case 122: return "F1"
+        case 120: return "F2"
+        case 99: return "F3"
+        case 118: return "F4"
+        case 96: return "F5"
+        case 97: return "F6"
+        case 98: return "F7"
+        case 100: return "F8"
+        case 101: return "F9"
+        case 109: return "F10"
+        case 103: return "F11"
+        case 111: return "F12"
+        case 105: return "F13"
+        case 107: return "F14"
+        case 113: return "F15"
+        case 106: return "F16"
+        case 64: return "F17"
+        case 79: return "F18"
+        case 80: return "F19"
+        case 90: return "F20"
+        case 36: return "Return"
+        case 48: return "Tab"
+        case 49: return "Space"
+        case 51: return "Delete"
+        case 53: return "Esc"
+        case 123: return "←"
+        case 124: return "→"
+        case 125: return "↓"
+        case 126: return "↑"
+        default: return "Key " + String(keyCode)
+        }
+    }
+}
+
 @MainActor
 final class NotchWorkspaceSettings: ObservableObject {
     @Published var triggerMode: NotchTriggerMode {
@@ -107,16 +186,25 @@ final class NotchWorkspaceSettings: ObservableObject {
             defaults.set(panelOpacity, forKey: Self.panelOpacityKey)
         }
     }
+    @Published var panelShortcut: NotchPanelShortcut {
+        didSet {
+            defaults.set(Int(panelShortcut.keyCode), forKey: Self.panelShortcutKeyCodeKey)
+            defaults.set(Int(panelShortcut.modifiers.rawValue), forKey: Self.panelShortcutModifiersKey)
+        }
+    }
     @Published private(set) var preferredExpandedSize: CGSize?
     @Published private(set) var isKeepingAwake = false
     @Published private(set) var isChangingKeepAwake = false
     @Published private(set) var keepAwakeErrorMessage: String?
+    @Published private(set) var panelShortcutRegistrationError: String?
 
     private static let triggerModeKey = "skillManager.notch.triggerMode"
     private static let shelfDragCompletionBehaviorKey = "skillManager.shelf.dragCompletionBehavior"
     private static let shelfFileTransferModeKey = "skillManager.shelf.fileTransferMode"
     private static let appearanceModeKey = "skillManager.notch.appearanceMode"
     private static let panelOpacityKey = "skillManager.notch.panelOpacity"
+    private static let panelShortcutKeyCodeKey = "skillManager.notch.panelShortcut.keyCode"
+    private static let panelShortcutModifiersKey = "skillManager.notch.panelShortcut.modifiers"
     private static let expandedWidthKey = "skillManager.notch.expandedWidth"
     private static let expandedHeightKey = "skillManager.notch.expandedHeight"
     private static let ownsSleepDisabledKey = "skillManager.notch.ownsSleepDisabled"
@@ -153,6 +241,12 @@ final class NotchWorkspaceSettings: ObservableObject {
             .flatMap(NotchAppearanceMode.init(rawValue:)) ?? .system
         let savedOpacity = defaults.object(forKey: Self.panelOpacityKey) as? Double
         panelOpacity = Self.clampedPanelOpacity(savedOpacity ?? 1)
+        let savedShortcutKeyCode = defaults.object(forKey: Self.panelShortcutKeyCodeKey) as? Int
+        let savedShortcutModifiers = defaults.object(forKey: Self.panelShortcutModifiersKey) as? Int
+        panelShortcut = NotchPanelShortcut(
+            keyCode: UInt32(savedShortcutKeyCode ?? Int(NotchPanelShortcut.defaultShortcut.keyCode)),
+            modifiers: NSEvent.ModifierFlags(rawValue: UInt(savedShortcutModifiers ?? 0))
+        )
 
         let savedWidth = defaults.double(forKey: Self.expandedWidthKey)
         let savedHeight = defaults.double(forKey: Self.expandedHeightKey)
@@ -231,6 +325,14 @@ final class NotchWorkspaceSettings: ObservableObject {
         preferredExpandedSize = size
         defaults.set(size.width, forKey: Self.expandedWidthKey)
         defaults.set(size.height, forKey: Self.expandedHeightKey)
+    }
+
+    func resetPanelShortcut() {
+        panelShortcut = .defaultShortcut
+    }
+
+    func setPanelShortcutRegistrationError(_ message: String?) {
+        panelShortcutRegistrationError = message
     }
 
     private static func clampedPanelOpacity(_ opacity: Double) -> Double {

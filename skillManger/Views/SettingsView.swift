@@ -15,6 +15,7 @@ struct SettingsView: View {
     @ObservedObject var launchAtLoginSettings: LaunchAtLoginSettings
     @ObservedObject var notchSettings: NotchWorkspaceSettings
     @State private var customTemplateName: String = String(localized: "Custom Platform")
+    @State private var isRecordingShortcut = false
 
     var body: some View {
         ScrollView {
@@ -52,6 +53,38 @@ struct SettingsView: View {
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(width: 48, alignment: .trailing)
+            }
+
+            HStack(spacing: 12) {
+                Label(shortcutTitle, systemImage: "keyboard")
+                    .frame(width: 104, alignment: .leading)
+
+                ShortcutRecorderView(
+                    shortcut: notchSettings.panelShortcut,
+                    isRecording: $isRecordingShortcut,
+                    onChange: { shortcut in
+                        notchSettings.panelShortcut = shortcut
+                        isRecordingShortcut = false
+                    },
+                    onCancel: {
+                        isRecordingShortcut = false
+                    }
+                )
+                .frame(width: 132, height: 32)
+
+                Button(resetShortcutTitle) {
+                    notchSettings.resetPanelShortcut()
+                    isRecordingShortcut = false
+                }
+                .buttonStyle(.bordered)
+
+                Spacer(minLength: 0)
+            }
+
+            if let shortcutError = notchSettings.panelShortcutRegistrationError {
+                Text(shortcutError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
         }
         .padding(16)
@@ -225,8 +258,92 @@ struct SettingsView: View {
         locale.identifier.lowercased().hasPrefix("zh") ? "透明度" : "Opacity"
     }
 
+    private var shortcutTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "弹窗快捷键" : "Panel shortcut"
+    }
+
+    private var resetShortcutTitle: String {
+        locale.identifier.lowercased().hasPrefix("zh") ? "恢复 F2" : "Reset F2"
+    }
+
     private var opacityPercent: String {
         "\(Int((notchSettings.panelOpacity * 100).rounded()))%"
+    }
+}
+
+private struct ShortcutRecorderView: NSViewRepresentable {
+    let shortcut: NotchPanelShortcut
+    @Binding var isRecording: Bool
+    let onChange: (NotchPanelShortcut) -> Void
+    let onCancel: () -> Void
+
+    func makeNSView(context: Context) -> ShortcutRecorderButton {
+        let button = ShortcutRecorderButton()
+        button.bezelStyle = .rounded
+        button.setButtonType(.momentaryPushIn)
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.beginRecording)
+        button.onShortcutChange = onChange
+        button.onCancel = onCancel
+        return button
+    }
+
+    func updateNSView(_ nsView: ShortcutRecorderButton, context: Context) {
+        nsView.onShortcutChange = onChange
+        nsView.onCancel = onCancel
+        nsView.isRecording = isRecording
+        nsView.title = isRecording ? recordingTitle : shortcut.displayTitle
+        nsView.contentTintColor = isRecording ? NSColor.controlAccentColor : nil
+
+        if isRecording, nsView.window?.firstResponder !== nsView {
+            nsView.window?.makeFirstResponder(nsView)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isRecording: $isRecording)
+    }
+
+    private var recordingTitle: String {
+        Locale.current.identifier.lowercased().hasPrefix("zh") ? "按下快捷键" : "Press keys"
+    }
+
+    final class Coordinator: NSObject {
+        @Binding var isRecording: Bool
+
+        init(isRecording: Binding<Bool>) {
+            _isRecording = isRecording
+        }
+
+        @objc func beginRecording() {
+            isRecording = true
+        }
+    }
+}
+
+private final class ShortcutRecorderButton: NSButton {
+    var onShortcutChange: ((NotchPanelShortcut) -> Void)?
+    var onCancel: (() -> Void)?
+    var isRecording = false
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        guard isRecording else {
+            super.keyDown(with: event)
+            return
+        }
+
+        if event.keyCode == 53 {
+            onCancel?()
+            return
+        }
+
+        guard let shortcut = NotchPanelShortcut.from(event: event) else {
+            NSSound.beep()
+            return
+        }
+        onShortcutChange?(shortcut)
     }
 }
 

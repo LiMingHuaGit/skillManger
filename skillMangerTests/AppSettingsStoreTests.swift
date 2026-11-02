@@ -88,6 +88,7 @@ final class NotchWorkspaceSettingsTests: XCTestCase {
         store.shelfFileTransferMode = .move
         store.appearanceMode = .light
         store.panelOpacity = 0.70
+        store.panelShortcut = NotchPanelShortcut(keyCode: 99, modifiers: [.command, .shift])
         store.saveExpandedSize(CGSize(width: 880, height: 660))
 
         let restored = NotchWorkspaceSettings(
@@ -99,7 +100,26 @@ final class NotchWorkspaceSettingsTests: XCTestCase {
         XCTAssertEqual(restored.shelfFileTransferMode, .move)
         XCTAssertEqual(restored.appearanceMode, .light)
         XCTAssertEqual(restored.panelOpacity, 0.70)
+        XCTAssertEqual(restored.panelShortcut, NotchPanelShortcut(keyCode: 99, modifiers: [.command, .shift]))
         XCTAssertEqual(restored.preferredExpandedSize, CGSize(width: 880, height: 660))
+    }
+
+    func testPanelShortcutDefaultsToF2AndCanReset() {
+        let defaults = makeDefaults()
+        let store = NotchWorkspaceSettings(
+            defaults: defaults,
+            systemSleepGuard: FakeSystemSleepGuard(),
+            sleepDisabledState: { false }
+        )
+
+        XCTAssertEqual(store.panelShortcut, .defaultShortcut)
+        XCTAssertEqual(store.panelShortcut.displayTitle, "F2")
+
+        store.panelShortcut = NotchPanelShortcut(keyCode: 122, modifiers: [.option])
+        XCTAssertEqual(store.panelShortcut.displayTitle, "⌥F1")
+
+        store.resetPanelShortcut()
+        XCTAssertEqual(store.panelShortcut, .defaultShortcut)
     }
 
     func testPanelOpacityIsClampedWhenRestoredAndChanged() {
